@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183970765607",
+    "project_id": "splitpay-58d73",
+    "storage_bucket": "splitpay-58d73.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183970765607:android:dd95fa68cffbc2e9b1a702",
+        "android_client_info": {
+          "package_name": "com.SplitPay.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3z4CySOHTt17v1oYNQkD_pm8vqEoOlxQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
