@@ -68,8 +68,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
     });
   }
 
-  /// Computes one friend's share of the bill (same logic used for
-  /// both local friendIds and linked friend uids).
   double _computeShareForFriend(
     String friendId,
     double totalAmount,
@@ -363,7 +361,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
 
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
-    // Which selected friends are linked (real accounts) vs local-only.
     final linkedFriends = _selectedFriendIds
         .map(
           (id) => _liveFriends.firstWhere(
@@ -374,13 +371,11 @@ class _AddBillScreenState extends State<AddBillScreen> {
         .where((f) => f.isLinked)
         .toList();
 
-    // participantUids: you + every linked friend's real uid.
     final participantUids = <String>[
       myUid,
       ...linkedFriends.map((f) => f.linkedUid!),
     ];
 
-    // sharesByUid: your share + each linked friend's share.
     final sharesByUid = <String, double>{myUid: myShare};
     for (final friend in linkedFriends) {
       sharesByUid[friend.linkedUid!] = _computeShareForFriend(
@@ -390,7 +385,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
       );
     }
 
-    // Who paid, in terms of uid (null = you paid).
     String? paidByUid;
     if (_paidByFriendId != null) {
       final payer = _liveFriends.firstWhere(
@@ -400,34 +394,31 @@ class _AddBillScreenState extends State<AddBillScreen> {
       if (payer.isLinked) paidByUid = payer.linkedUid;
     }
 
-    final updatedBill = Bill(
-      id: widget.bill.id,
+    final bill = Bill(
+      id: '',
       title: title,
       amount: amount,
       date: _selectedDate,
       friendIds: _selectedFriendIds.toList(),
-      splitMethod: _splitMethod,
+      splitMethod: _splitMethod == SplitMethod.equal ? 'equal' : 'custom',
       customAmounts: customAmounts,
       myShare: myShare,
       paidBy: _paidByFriendId ?? 'me',
       note: _noteController.text.trim(),
-      settledFriendIds: widget.bill.settledFriendIds,
-      partialPaymentsByFriend:
-          widget.bill.partialPaymentsByFriend, 
-      myPartialPayment: widget.bill.myPartialPayment,
-      ownerId: widget.bill.ownerId,
-      participantUids: widget.bill.participantUids,
-      sharesByUid: widget.bill.sharesByUid,
-      paidByUid: widget.bill.paidByUid,
-      settledUids: widget.bill.settledUids,
-      partialPaymentsByUid: widget.bill.partialPaymentsByUid,
+      settledFriendIds: [],
+      partialPaymentsByFriend: {},
+      myPartialPayment: 0,
+      ownerId: myUid,
+      participantUids: participantUids,
+      sharesByUid: sharesByUid,
+      paidByUid: paidByUid,
+      settledUids: [],
+      partialPaymentsByUid: {},
     );
 
     try {
       await BillService.addBill(bill);
 
-      // Ensure reciprocal linking: any linked friend on this bill
-      // should automatically get you added to THEIR friends list too.
       for (final friend in linkedFriends) {
         await FriendService.ensureReciprocalFriend(friend.linkedUid!);
       }
