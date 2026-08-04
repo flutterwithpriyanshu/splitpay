@@ -19,8 +19,9 @@ class FriendDetailsScreen extends StatelessWidget {
     required double outstanding,
     required bool youOwe,
   }) {
-    final controller =
-        TextEditingController(text: outstanding.toStringAsFixed(2));
+    final controller = TextEditingController(
+      text: outstanding.toStringAsFixed(2),
+    );
 
     return showModalBottomSheet<double>(
       context: context,
@@ -61,8 +62,9 @@ class FriendDetailsScreen extends StatelessWidget {
               const SizedBox(height: 16),
               TextField(
                 controller: controller,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Amount to settle',
                   filled: true,
@@ -139,7 +141,8 @@ class FriendDetailsScreen extends StatelessWidget {
               stream: sharedStream,
               builder: (context, sharedSnapshot) {
                 final sharedBills = sharedSnapshot.data ?? [];
-                final sharedLoading = friend.isLinked &&
+                final sharedLoading =
+                    friend.isLinked &&
                     sharedSnapshot.connectionState == ConnectionState.waiting;
 
                 final isLoading = ownLoading || sharedLoading;
@@ -149,7 +152,9 @@ class FriendDetailsScreen extends StatelessWidget {
                 for (final bill in ownBills) {
                   if (bill.paidBy == 'me') {
                     if (bill.friendIds.contains(friend.id)) {
-                      balance += bill.remainingForFriend(friend.id);
+                      balance += friend.isLinked
+                          ? bill.remainingForUid(friend.linkedUid!)
+                          : bill.remainingForFriend(friend.id);
                     }
                   } else if (bill.paidBy == friend.id) {
                     balance -= bill.remainingMyShare;
@@ -165,13 +170,13 @@ class FriendDetailsScreen extends StatelessWidget {
                 final balanceText = balance == 0
                     ? 'You are settled up'
                     : youOwe
-                        ? 'You owe ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
-                        : '${friend.name} owes you ₹${outstanding.toStringAsFixed(0)}';
+                    ? 'You owe ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
+                    : '${friend.name} owes you ₹${outstanding.toStringAsFixed(0)}';
                 final balanceColor = balance == 0
                     ? AppColors.textSecondary
                     : youOwe
-                        ? AppColors.error
-                        : AppColors.success;
+                    ? AppColors.error
+                    : AppColors.success;
 
                 final allBills = [...ownBills, ...sharedBills]
                   ..sort((a, b) => b.date.compareTo(a.date));
@@ -180,7 +185,9 @@ class FriendDetailsScreen extends StatelessWidget {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       child: Row(
                         children: [
                           IconButton(
@@ -206,10 +213,10 @@ class FriendDetailsScreen extends StatelessWidget {
                             children: [
                               CircleAvatar(
                                 radius: 44,
-                                backgroundColor:
-                                    AppColors.primary.withOpacity(0.1),
-                                backgroundImage:
-                                    NetworkImage(friend.avatarUrl),
+                                backgroundColor: AppColors.primary.withOpacity(
+                                  0.1,
+                                ),
+                                backgroundImage: NetworkImage(friend.avatarUrl),
                               ),
                               const SizedBox(height: 12),
                               Text(
@@ -225,8 +232,11 @@ class FriendDetailsScreen extends StatelessWidget {
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.verified_rounded,
-                                        size: 14, color: AppColors.primary),
+                                    Icon(
+                                      Icons.verified_rounded,
+                                      size: 14,
+                                      color: AppColors.primary,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'SplitPay user',
@@ -261,7 +271,8 @@ class FriendDetailsScreen extends StatelessWidget {
                             child: isLoading
                                 ? const Center(
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : Text(
                                     balanceText,
@@ -291,8 +302,9 @@ class FriendDetailsScreen extends StatelessWidget {
                                 child: Container(
                                   height: 68,
                                   decoration: BoxDecoration(
-                                    color: AppColors.textSecondary
-                                        .withOpacity(0.12),
+                                    color: AppColors.textSecondary.withOpacity(
+                                      0.12,
+                                    ),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
@@ -300,8 +312,7 @@ class FriendDetailsScreen extends StatelessWidget {
                             )
                           else if (allBills.isEmpty)
                             Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 40),
+                              padding: const EdgeInsets.symmetric(vertical: 40),
                               child: Center(
                                 child: Text(
                                   'No shared bills yet',
@@ -319,8 +330,9 @@ class FriendDetailsScreen extends StatelessWidget {
                               double amount;
                               if (isOwn) {
                                 settled = friend.isLinked
-                                    ? bill.settledUids
-                                        .contains(friend.linkedUid)
+                                    ? bill.settledUids.contains(
+                                        friend.linkedUid,
+                                      )
                                     : bill.isSettledFor(friend.id);
                                 amount = bill.amount;
                               } else {
@@ -370,15 +382,18 @@ class FriendDetailsScreen extends StatelessWidget {
                                       final myProfile = await FirebaseFirestore
                                           .instance
                                           .collection('users')
-                                          .doc(FirebaseAuth
-                                              .instance.currentUser!.uid)
+                                          .doc(
+                                            FirebaseAuth
+                                                .instance
+                                                .currentUser!
+                                                .uid,
+                                          )
                                           .get();
                                       final myName =
                                           myProfile.data()?['fullName'] ??
-                                              'A friend';
+                                          'A friend';
 
-                                      await TransactionService
-                                          .addTransactionForUid(
+                                      await TransactionService.addTransactionForUid(
                                         targetUid: friend.linkedUid!,
                                         personName: myName,
                                         amount: entered,
@@ -389,8 +404,9 @@ class FriendDetailsScreen extends StatelessWidget {
                                     }
 
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             entered >= outstanding - 0.01
@@ -402,19 +418,20 @@ class FriendDetailsScreen extends StatelessWidget {
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
-                                            content:
-                                                Text('Settle Up failed: $e')),
+                                          content: Text('Settle Up failed: $e'),
+                                        ),
                                       );
                                     }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            disabledBackgroundColor:
-                                AppColors.textSecondary.withOpacity(0.3),
+                            disabledBackgroundColor: AppColors.textSecondary
+                                .withOpacity(0.3),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -507,8 +524,7 @@ class FriendDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (isSettled ? AppColors.success : AppColors.warning)
                       .withOpacity(0.12),
@@ -519,8 +535,7 @@ class FriendDetailsScreen extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color:
-                        isSettled ? AppColors.success : AppColors.warning,
+                    color: isSettled ? AppColors.success : AppColors.warning,
                   ),
                 ),
               ),
