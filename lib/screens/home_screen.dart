@@ -62,7 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     for (final bill in ownBills) {
                       if (bill.paidBy == 'me') {
                         for (final fid in bill.friendIds) {
-                          youGet += bill.remainingForFriend(fid);
+                          final f = friendById[fid];
+                          final remaining = (f != null && f.isLinked)
+                              ? bill.remainingForUid(f.linkedUid!)
+                              : bill.remainingForFriend(fid);
+                          youGet += remaining;
                         }
                       } else {
                         youOwe += bill.remainingMyShare;
@@ -442,7 +446,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     return true;
                   } else {
                     if (bill.settledFriendIds.isNotEmpty ||
-                        bill.settledUids.isNotEmpty) {
+                        bill.settledUids.isNotEmpty ||
+                        bill.partialPaymentsByFriend.isNotEmpty ||
+                        bill.partialPaymentsByUid.isNotEmpty ||
+                        bill.myPartialPayment > 0) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(

@@ -173,7 +173,10 @@ class _EditBillScreenState extends State<EditBillScreen> {
     // Bills with settled activity can't be edited.
     final hasSettledActivity =
         widget.bill.settledFriendIds.isNotEmpty ||
-        widget.bill.settledUids.isNotEmpty;
+        widget.bill.settledUids.isNotEmpty ||
+        widget.bill.partialPaymentsByFriend.isNotEmpty ||
+        widget.bill.partialPaymentsByUid.isNotEmpty ||
+        widget.bill.myPartialPayment > 0;
 
     if (hasSettledActivity) {
       return Scaffold(
