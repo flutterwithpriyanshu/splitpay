@@ -9,6 +9,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
+import 'package:splitpay/screens/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -161,7 +162,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         GestureDetector(
           onTap: () {
-            // TODO: navigate to Settings screen (wire this if not already done)
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
           },
           child: LocalAvatar(localKey: myUid, isProfile: true, radius: 24),
         ),
