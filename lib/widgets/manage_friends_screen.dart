@@ -5,6 +5,7 @@ import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/widgets/local_avatar.dart';
 
 class ManageFriendsScreen extends StatelessWidget {
   const ManageFriendsScreen({super.key});
@@ -157,11 +158,11 @@ class ManageFriendsScreen extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                CircleAvatar(
+                                LocalAvatar(
+                                  localKey: friend.id,
+                                  isProfile: false,
+                                  fallbackUrl: friend.avatarUrl,
                                   radius: 22,
-                                  backgroundImage: NetworkImage(
-                                    friend.avatarUrl,
-                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(

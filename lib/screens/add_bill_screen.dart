@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,7 +7,9 @@ import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
+import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/widgets/local_avatar.dart';
 
 enum SplitMethod { equal, custom }
 
@@ -83,6 +86,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
     _newFriendController.clear();
     final phoneController = TextEditingController();
     bool isChecking = false;
+    Uint8List? pendingContactPhoto;
 
     showModalBottomSheet(
       context: context,
@@ -114,6 +118,15 @@ class _AddBillScreenState extends State<AddBillScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    if (pendingContactPhoto != null) ...[
+                      Center(
+                        child: CircleAvatar(
+                          radius: 32,
+                          backgroundImage: MemoryImage(pendingContactPhoto!),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     TextField(
                       controller: _newFriendController,
                       decoration: InputDecoration(
@@ -177,6 +190,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                 final fullContact =
                                     await FlutterContacts.getContact(
                                       contact.id,
+                                      withPhoto: true,
                                     );
                                 if (fullContact == null) return;
 
@@ -185,10 +199,12 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                     fullContact.phones.isNotEmpty
                                     ? fullContact.phones.first.number
                                     : '';
+                                final pickedPhoto = fullContact.photo;
 
                                 setSheetState(() {
                                   _newFriendController.text = pickedName;
                                   phoneController.text = pickedPhone;
+                                  pendingContactPhoto = pickedPhoto;
                                 });
                               } catch (e) {
                                 if (context.mounted) {
@@ -266,6 +282,14 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                 name,
                                 phoneNumber: phone,
                               );
+
+                              // Save the contact's photo locally, if we got one.
+                              if (pendingContactPhoto != null) {
+                                await LocalImageService.saveFriendImage(
+                                  newFriend.id,
+                                  pendingContactPhoto!,
+                                );
+                              }
 
                               setState(() => _toggleFriend(newFriend.id));
 
@@ -654,9 +678,11 @@ class _AddBillScreenState extends State<AddBillScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            CircleAvatar(
+                            LocalAvatar(
+                              localKey: friend.id,
+                              isProfile: false,
+                              fallbackUrl: friend.avatarUrl,
                               radius: 10,
-                              backgroundImage: NetworkImage(friend.avatarUrl),
                             ),
                             const SizedBox(width: 8),
                             Text(

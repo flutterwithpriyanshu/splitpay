@@ -8,6 +8,7 @@ import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
+import 'package:splitpay/widgets/local_avatar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -99,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                         children: [
-                          _buildHeader(userName),
+                          _buildHeader(userName, myUid),
                           const SizedBox(height: 20),
                           _buildBalanceCard(youOwe, youGet),
                           const SizedBox(height: 24),
@@ -133,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ---------- Header ----------
-  Widget _buildHeader(String userName) {
+  Widget _buildHeader(String userName, String myUid) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -160,15 +161,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         GestureDetector(
           onTap: () {
-            // TODO: navigate to Settings screen
+            // TODO: navigate to Settings screen (wire this if not already done)
           },
-          child: CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            backgroundImage: const NetworkImage(
-              'https://i.pravatar.cc/150?img=68',
-            ),
-          ),
+          child: LocalAvatar(localKey: myUid, isProfile: true, radius: 24),
         ),
       ],
     );
@@ -314,10 +309,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       child: Column(
                         children: [
-                          CircleAvatar(
+                          LocalAvatar(
+                            localKey: friend.id,
+                            isProfile: false,
+                            fallbackUrl: friend.avatarUrl,
                             radius: 28,
-                            backgroundColor: AppColors.primary.withOpacity(0.1),
-                            backgroundImage: NetworkImage(friend.avatarUrl),
                           ),
                           const SizedBox(height: 6),
                           Text(

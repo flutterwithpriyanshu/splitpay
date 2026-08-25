@@ -1,10 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:splitpay/screens/main_shell.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:splitpay/theme/app_colors.dart';
-
+import 'package:splitpay/services/local_image_service.dart';
+import 'package:splitpay/screens/main_shell.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -17,6 +19,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  File? _pickedProfileImage;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -33,9 +36,21 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _pickProfileImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
     );
+    if (picked != null) {
+      setState(() => _pickedProfileImage = File(picked.path));
+    }
   }
 
   Future<void> _submit() async {
@@ -71,22 +86,26 @@ class _AuthScreenState extends State<AuthScreen> {
           password: password,
         );
       } else {
-        final credential =
-            await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password);
 
-        // Save profile info (including phone number) to Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(credential.user!.uid)
             .set({
-          'fullName': _nameController.text.trim(),
-          'phoneNumber': _phoneController.text.trim(),
-          'email': email,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+              'fullName': _nameController.text.trim(),
+              'phoneNumber': _phoneController.text.trim(),
+              'email': email,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+        // Save the profile photo locally, if the user picked one.
+        if (_pickedProfileImage != null) {
+          await LocalImageService.saveProfileImage(
+            credential.user!.uid,
+            await _pickedProfileImage!.readAsBytes(),
+          );
+        }
       }
 
       if (!mounted) return;
@@ -163,6 +182,64 @@ class _AuthScreenState extends State<AuthScreen> {
                 const SizedBox(height: 24),
 
                 if (!isLogin) ...[
+                  // Profile photo picker
+                  Center(
+                    child: GestureDetector(
+                      onTap: _pickProfileImage,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundColor: AppColors.background,
+                            backgroundImage: _pickedProfileImage != null
+                                ? FileImage(_pickedProfileImage!)
+                                : null,
+                            child: _pickedProfileImage == null
+                                ? Icon(
+                                    Icons.person_rounded,
+                                    size: 40,
+                                    color: AppColors.textSecondary.withOpacity(
+                                      0.4,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.surface,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      'Add a photo (optional)',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
                   _buildLabel('Full Name'),
                   const SizedBox(height: 8),
                   _buildField(
@@ -277,13 +354,13 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildLabel(String text) => Text(
-        text,
-        style: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textSecondary,
-        ),
-      );
+    text,
+    style: GoogleFonts.inter(
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textSecondary,
+    ),
+  );
 
   Widget _buildField({
     required TextEditingController controller,

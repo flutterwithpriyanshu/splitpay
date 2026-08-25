@@ -7,6 +7,7 @@ import 'package:splitpay/main.dart';
 import 'package:splitpay/screens/static_content_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/edit_profile_screen.dart';
+import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/widgets/manage_friends_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -209,12 +210,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     child: Row(
                       children: [
-                        CircleAvatar(
+                        LocalAvatar(
+                          localKey:
+                              FirebaseAuth.instance.currentUser?.uid ?? '',
+                          isProfile: true,
                           radius: 30,
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          backgroundImage: const NetworkImage(
-                            'https://i.pravatar.cc/150?img=68',
-                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(

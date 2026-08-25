@@ -8,6 +8,7 @@ import 'package:splitpay/model/transaction.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/transaction_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/widgets/local_avatar.dart';
 
 class FriendDetailsScreen extends StatelessWidget {
   final Friend friend;
@@ -211,12 +212,11 @@ class FriendDetailsScreen extends StatelessWidget {
                         children: [
                           Column(
                             children: [
-                              CircleAvatar(
+                              LocalAvatar(
+                                localKey: friend.id,
+                                isProfile: false,
+                                fallbackUrl: friend.avatarUrl,
                                 radius: 44,
-                                backgroundColor: AppColors.primary.withOpacity(
-                                  0.1,
-                                ),
-                                backgroundImage: NetworkImage(friend.avatarUrl),
                               ),
                               const SizedBox(height: 12),
                               Text(
