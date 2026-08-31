@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/core/static_content.dart';
-import 'package:splitpay/main.dart';
+import 'package:splitpay/theme/theme_notifier.dart';
+import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/static_content_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/edit_profile_screen.dart';
@@ -94,8 +95,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirmed == true) {
       await FirebaseAuth.instance.signOut();
-      // AuthGate/StreamBuilder in main.dart will automatically
-      // redirect to Splash/Auth once signed out.
+      if (mounted) {
+        // The auth flow doesn't rely on the root StreamBuilder after the
+        // first launch — every screen up to MainShell got here via
+        // pushAndRemoveUntil, which already cleared that route out of the
+        // stack. So signOut() alone has nothing left to redirect anything.
+        // Push AuthScreen directly and wipe the stack under it, so there's
+        // no back-button path into the signed-out MainShell.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
+          (route) => false,
+        );
+      }
     }
   }
 

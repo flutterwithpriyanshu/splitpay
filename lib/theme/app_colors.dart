@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:splitpay/main.dart'; // for themeModeNotifier
+import 'package:splitpay/theme/theme_notifier.dart'; // for themeModeNotifier
 import 'dart:ui' as ui;
 
 class AppColors {
