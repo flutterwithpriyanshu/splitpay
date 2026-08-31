@@ -22,8 +22,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final myUid = FirebaseAuth.instance.currentUser!.uid;
-    final userName = FirebaseAuth.instance.currentUser?.displayName ?? 'there';
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Sign-out just fired — main.dart's StreamBuilder is about to swap
+      // this whole screen out. Bail before touching a null uid.
+      return const Scaffold(body: SizedBox.shrink());
+    }
+    final myUid = user.uid;
+    final userName = user.displayName ?? 'there';
 
     return Scaffold(
       backgroundColor: AppColors.background,

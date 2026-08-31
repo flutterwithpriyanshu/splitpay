@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:splitpay/firebase/firebase_options.dart';
 import 'package:splitpay/theme/theme.dart';
 
@@ -15,6 +16,10 @@ final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await GoogleSignIn.instance.initialize(
+    serverClientId:
+        '183970765607-e598234ffcbgq4ca0ocfvre4f3ou3e5a.apps.googleusercontent.com',
+  );
   runApp(const SplitPayApp());
 }
 

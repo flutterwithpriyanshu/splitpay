@@ -122,7 +122,11 @@ class FriendDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myUid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
+    final myUid = user.uid;
 
     return Scaffold(
       backgroundColor: AppColors.background,

@@ -1,9 +1,12 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' hide Group;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
+import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
@@ -121,6 +124,7 @@ class _FriendsScreenState extends State<FriendsScreen>
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     bool isChecking = false;
+    Uint8List? pendingContactPhoto;
 
     showModalBottomSheet(
       context: context,
@@ -149,15 +153,101 @@ class _FriendsScreenState extends State<FriendsScreen>
                         fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 16),
+                  if (pendingContactPhoto != null) ...[
+                    Center(
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundImage: MemoryImage(pendingContactPhoto!),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   TextField(
                     controller: nameController,
                     decoration: const InputDecoration(hintText: 'Name'),
                   ),
                   const SizedBox(height: 10),
-                  TextField(
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(hintText: 'Phone number'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration:
+                              const InputDecoration(hintText: 'Phone number'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: IconButton(
+                          onPressed: () async {
+                            try {
+                              final status = await FlutterContacts.permissions
+                                  .request(PermissionType.readWrite);
+                              if (status != PermissionStatus.granted) {
+                                if (sheetContext.mounted) {
+                                  ScaffoldMessenger.of(sheetContext)
+                                      .showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Contacts permission is required to pick a contact',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+
+                              final picked = await FlutterContacts.native
+                                  .showPicker(
+                                properties: {
+                                  ContactProperty.phone,
+                                  ContactProperty.photoFullRes,
+                                },
+                              );
+                              if (picked == null || picked.id == null) return;
+
+                              final fullContact = await FlutterContacts.get(
+                                picked.id!,
+                                properties: ContactProperties.all,
+                              );
+                              if (fullContact == null) return;
+
+                              final pickedName = fullContact.displayName ?? '';
+                              final pickedPhone = fullContact.phones.isNotEmpty
+                                  ? normalizePhone(
+                                      fullContact.phones.first.number)
+                                  : '';
+                              final pickedPhoto = fullContact.photo?.fullSize;
+
+                              setSheetState(() {
+                                nameController.text = pickedName;
+                                phoneController.text = pickedPhone;
+                                pendingContactPhoto = pickedPhoto;
+                              });
+                            } catch (e) {
+                              if (sheetContext.mounted) {
+                                ScaffoldMessenger.of(sheetContext)
+                                    .showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text('Could not open contacts: $e'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: Icon(
+                            Icons.contact_page_rounded,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -206,10 +296,17 @@ class _FriendsScreenState extends State<FriendsScreen>
                                 return;
                               }
 
-                              await FriendService.addFriend(
+                              final newFriend = await FriendService.addFriend(
                                 name,
                                 phoneNumber: phone,
                               );
+
+                              if (pendingContactPhoto != null) {
+                                await LocalImageService.saveFriendImage(
+                                  newFriend.id,
+                                  pendingContactPhoto!,
+                                );
+                              }
 
                               if (sheetContext.mounted) {
                                 Navigator.pop(sheetContext);

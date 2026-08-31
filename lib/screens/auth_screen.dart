@@ -8,6 +8,8 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:splitpay/screens/complete_profile_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -22,10 +24,20 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _obscurePassword = true;
   File? _pickedProfileImage;
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  late final Future<void> _googleSignInInitialization;
+
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _googleSignInInitialization = _googleSignIn.initialize();
+  }
 
   @override
   void dispose() {
@@ -116,6 +128,58 @@ class _AuthScreenState extends State<AuthScreen> {
       );
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? 'Something went wrong');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await _googleSignInInitialization;
+
+      final googleUser = await _googleSignIn.authenticate();
+
+      final googleAuth = googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+
+      final userCred = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+
+      final userDoc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCred.user!.uid);
+
+      final snap = await userDoc.get();
+
+      if (!mounted) return;
+
+      if (!snap.exists) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => CompleteProfileScreen(
+              uid: userCred.user!.uid,
+              name: userCred.user!.displayName ?? '',
+              email: userCred.user!.email ?? '',
+            ),
+          ),
+          (route) => false,
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainShell()),
+          (route) => false,
+        );
+      }
+    } on GoogleSignInException catch (e) {
+      _showError('Google sign-in failed: ${e.description ?? e.code.name}');
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? 'Google sign-in failed');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -314,6 +378,57 @@ class _AuthScreenState extends State<AuthScreen> {
                               color: Colors.white,
                             ),
                           ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: AppColors.textSecondary.withOpacity(0.2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'or',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: AppColors.textSecondary.withOpacity(0.2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      side: BorderSide(
+                        color: AppColors.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                    label: Text(
+                      'Continue with Google',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),

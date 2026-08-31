@@ -184,11 +184,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
                           child: IconButton(
                             onPressed: () async {
                               try {
-                                final granted =
-                                    await FlutterContacts.requestPermission(
-                                      readonly: true,
-                                    );
-                                if (!granted) {
+                                final status = await FlutterContacts.permissions
+                                    .request(PermissionType.readWrite);
+                                if (status != PermissionStatus.granted) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -201,24 +199,30 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                   return;
                                 }
 
-                                final contact =
-                                    await FlutterContacts.openExternalPick();
-                                if (contact == null) return;
-
-                                final fullContact =
-                                    await FlutterContacts.getContact(
-                                      contact.id,
-                                      withPhoto: true,
+                                final picked = await FlutterContacts.native
+                                    .showPicker(
+                                      properties: {
+                                        ContactProperty.phone,
+                                        ContactProperty.photoFullRes,
+                                      },
                                     );
+                                if (picked == null || picked.id == null) return;
+
+                                final fullContact = await FlutterContacts.get(
+                                  picked.id!,
+                                  properties: ContactProperties.all,
+                                );
                                 if (fullContact == null) return;
 
-                                final pickedName = fullContact.displayName;
+                                final pickedName =
+                                    fullContact.displayName ?? '';
                                 final pickedPhone =
                                     fullContact.phones.isNotEmpty
                                     ? normalizePhone(
-                                        fullContact.phones.first.number)
+                                        fullContact.phones.first.number,
+                                      )
                                     : '';
-                                final pickedPhoto = fullContact.photo;
+                                final pickedPhoto = fullContact.photo?.fullSize;
 
                                 setSheetState(() {
                                   _newFriendController.text = pickedName;
@@ -259,8 +263,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
                           ? null
                           : () async {
                               final name = _newFriendController.text.trim();
-                              final phone =
-                                  normalizePhone(phoneController.text.trim());
+                              final phone = normalizePhone(
+                                phoneController.text.trim(),
+                              );
 
                               if (name.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(

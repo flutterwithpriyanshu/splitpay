@@ -12,7 +12,36 @@
           "package_name": "com.SplitPay.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "183970765607-2hnlptlm1du1lvjj1voro5hgdo9havq0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.SplitPay.app",
+            "certificate_hash": "9cdfabe9655e24aadcc072b3d07d19e12b654b89"
+          }
+        },
+        {
+          "client_id": "183970765607-aadj74ii1dse1iu7j74v6nnhak68hqj7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.SplitPay.app",
+            "certificate_hash": "d057fc0088e91c0274a377d2335ea6c9893094d8"
+          }
+        },
+        {
+          "client_id": "183970765607-pijfj8hpfdfhe5vhgslt0gdkmb5v5lf4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.SplitPay.app",
+            "certificate_hash": "a5f6fba91e5ef3c953b6b441aa2daa5d7858fae2"
+          }
+        },
+        {
+          "client_id": "183970765607-e598234ffcbgq4ca0ocfvre4f3ou3e5a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA3z4CySOHTt17v1oYNQkD_pm8vqEoOlxQ"
@@ -20,7 +49,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "183970765607-e598234ffcbgq4ca0ocfvre4f3ou3e5a.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "183970765607-u07nen20rrc0agr0265d3og40ehs5g2j.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.SplitPay.app"
+              }
+            }
+          ]
         }
       }
     }
