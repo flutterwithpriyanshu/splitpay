@@ -11,6 +11,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
@@ -186,17 +187,20 @@ class _FriendsScreenState extends State<FriendsScreen>
                         child: IconButton(
                           onPressed: () async {
                             try {
-                              final status = await FlutterContacts.permissions
-                                  .request(PermissionType.readWrite);
+                              // read only — readWrite also asks for
+                              // WRITE_CONTACTS and can come back denied
+                              // even after the user taps Allow.
+                              var status = await FlutterContacts.permissions
+                                  .request(PermissionType.read);
+                              if (status != PermissionStatus.granted) {
+                                status = await FlutterContacts.permissions
+                                    .request(PermissionType.read);
+                              }
                               if (status != PermissionStatus.granted) {
                                 if (sheetContext.mounted) {
-                                  ScaffoldMessenger.of(sheetContext)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Contacts permission is required to pick a contact',
-                                      ),
-                                    ),
+                                  showAppToast(
+                                    sheetContext,
+                                    'Contacts permission is required to pick a contact',
                                   );
                                 }
                                 return;
@@ -231,12 +235,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                               });
                             } catch (e) {
                               if (sheetContext.mounted) {
-                                ScaffoldMessenger.of(sheetContext)
-                                    .showSnackBar(
-                                  SnackBar(
-                                    content:
-                                        Text('Could not open contacts: $e'),
-                                  ),
+                                showAppToast(
+                                  sheetContext,
+                                  'Could not open contacts: $e',
                                 );
                               }
                             }
@@ -267,11 +268,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                                   normalizePhone(phoneController.text.trim());
 
                               if (name.isEmpty || phone.isEmpty) {
-                                ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                        Text('Name and phone are required'),
-                                  ),
+                                showAppToast(
+                                  sheetContext,
+                                  'Name and phone are required',
                                 );
                                 return;
                               }
@@ -284,13 +283,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                               if (linkedUid == null) {
                                 setSheetState(() => isChecking = false);
                                 if (sheetContext.mounted) {
-                                  ScaffoldMessenger.of(sheetContext)
-                                      .showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "This number hasn't signed up for SplitPay — friend not added",
-                                      ),
-                                    ),
+                                  showAppToast(
+                                    sheetContext,
+                                    "This number hasn't signed up for SplitPay — friend not added",
                                   );
                                 }
                                 return;

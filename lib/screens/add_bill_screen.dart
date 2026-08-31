@@ -11,6 +11,7 @@ import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 
 enum SplitMethod { equal, custom }
@@ -184,16 +185,27 @@ class _AddBillScreenState extends State<AddBillScreen> {
                           child: IconButton(
                             onPressed: () async {
                               try {
-                                final status = await FlutterContacts.permissions
-                                    .request(PermissionType.readWrite);
+                                // Only reading a contact here — request
+                                // read, not readWrite. readWrite also asks
+                                // for WRITE_CONTACTS, and on some devices
+                                // that half of the combined prompt gets
+                                // denied even after the user taps Allow,
+                                // which made this show "permission required"
+                                // even though contacts access was granted.
+                                var status = await FlutterContacts.permissions
+                                    .request(PermissionType.read);
+                                if (status != PermissionStatus.granted) {
+                                  // Ask once more directly — some OEM
+                                  // dialogs report the first check as
+                                  // denied right after the user taps Allow.
+                                  status = await FlutterContacts.permissions
+                                      .request(PermissionType.read);
+                                }
                                 if (status != PermissionStatus.granted) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Contacts permission is required to pick a contact',
-                                        ),
-                                      ),
+                                    showAppToast(
+                                      context,
+                                      'Contacts permission is required to pick a contact',
                                     );
                                   }
                                   return;
@@ -231,12 +243,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                 });
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Could not open contacts: $e',
-                                      ),
-                                    ),
+                                  showAppToast(
+                                    context,
+                                    'Could not open contacts: $e',
                                   );
                                 }
                               }
@@ -268,18 +277,13 @@ class _AddBillScreenState extends State<AddBillScreen> {
                               );
 
                               if (name.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Please enter a name'),
-                                  ),
-                                );
+                                showAppToast(context, 'Please enter a name');
                                 return;
                               }
                               if (phone.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Phone number is required'),
-                                  ),
+                                showAppToast(
+                                  context,
+                                  'Phone number is required',
                                 );
                                 return;
                               }
@@ -292,12 +296,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
                               if (linkedUid == null) {
                                 setSheetState(() => isChecking = false);
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "This number hasn't signed up for SplitPay — friend not added",
-                                      ),
-                                    ),
+                                  showAppToast(
+                                    context,
+                                    "This number hasn't signed up for SplitPay — friend not added",
                                   );
                                 }
                                 return;
@@ -320,12 +321,10 @@ class _AddBillScreenState extends State<AddBillScreen> {
 
                               if (context.mounted) {
                                 Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      '${newFriend.name} is on SplitPay! Accounts linked.',
-                                    ),
-                                  ),
+                                showAppToast(
+                                  context,
+                                  '${newFriend.name} is on SplitPay! Accounts linked.',
+                                  isError: false,
                                 );
                               }
                             },
