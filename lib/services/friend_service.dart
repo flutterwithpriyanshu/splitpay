@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:splitpay/model/friend.dart';
+import 'package:splitpay/core/phone_utils.dart';
 
 class FriendService {
   static final _db = FirebaseFirestore.instance;
@@ -25,7 +26,7 @@ class FriendService {
   static Future<String?> findUserByPhone(String phoneNumber) async {
     final snap = await _db
         .collection('users')
-        .where('phoneNumber', isEqualTo: phoneNumber)
+        .where('phoneNumber', isEqualTo: normalizePhone(phoneNumber))
         .limit(1)
         .get();
 

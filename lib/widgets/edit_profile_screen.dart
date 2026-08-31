@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/phone_utils.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String initialName;
@@ -39,7 +40,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    final phone = normalizePhone(_phoneController.text.trim());
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context)

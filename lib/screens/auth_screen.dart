@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/screens/main_shell.dart';
+import 'package:splitpay/core/phone_utils.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -94,7 +95,7 @@ class _AuthScreenState extends State<AuthScreen> {
             .doc(credential.user!.uid)
             .set({
               'fullName': _nameController.text.trim(),
-              'phoneNumber': _phoneController.text.trim(),
+              'phoneNumber': normalizePhone(_phoneController.text.trim()),
               'email': email,
               'createdAt': FieldValue.serverTimestamp(),
             });

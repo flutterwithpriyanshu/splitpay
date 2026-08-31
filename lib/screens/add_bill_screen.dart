@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' hide Group;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/model/bill.dart';
@@ -10,13 +10,20 @@ import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
+import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/model/group.dart';
 
 enum SplitMethod { equal, custom }
 
 class AddBillScreen extends StatefulWidget {
   final VoidCallback? onBillSaved;
 
-  const AddBillScreen({super.key, this.onBillSaved});
+  /// When set, this bill is created inside this group: the group's
+  /// members are preselected and the saved bill is tagged with the
+  /// group's id so it shows up in the group's bill list.
+  final Group? group;
+
+  const AddBillScreen({super.key, this.onBillSaved, this.group});
 
   @override
   State<AddBillScreen> createState() => _AddBillScreenState();
@@ -36,6 +43,17 @@ class _AddBillScreenState extends State<AddBillScreen> {
   final Map<String, TextEditingController> _customAmountControllers = {};
 
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.group != null) {
+      _selectedFriendIds.addAll(widget.group!.memberFriendIds);
+      for (final id in widget.group!.memberFriendIds) {
+        _customAmountControllers[id] = TextEditingController();
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -197,7 +215,8 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                 final pickedName = fullContact.displayName;
                                 final pickedPhone =
                                     fullContact.phones.isNotEmpty
-                                    ? fullContact.phones.first.number
+                                    ? normalizePhone(
+                                        fullContact.phones.first.number)
                                     : '';
                                 final pickedPhoto = fullContact.photo;
 
@@ -240,7 +259,8 @@ class _AddBillScreenState extends State<AddBillScreen> {
                           ? null
                           : () async {
                               final name = _newFriendController.text.trim();
-                              final phone = phoneController.text.trim();
+                              final phone =
+                                  normalizePhone(phoneController.text.trim());
 
                               if (name.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -438,6 +458,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
       paidByUid: paidByUid,
       settledUids: [],
       partialPaymentsByUid: {},
+      groupId: widget.group?.id,
     );
 
     try {
@@ -551,14 +572,38 @@ class _AddBillScreenState extends State<AddBillScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           children: [
-            Text(
-              'Add Bill',
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Add Bill',
+                  style: GoogleFonts.inter(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
             ),
+            if (widget.group != null) ...[
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 44),
+                child: Text(
+                  'Adding to "${widget.group!.name}"',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
 
             _label('Bill Amount'),

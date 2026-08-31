@@ -28,6 +28,9 @@ class Bill {
   final Map<String, double>
   partialPaymentsByUid; // uid -> paid so far toward their share
 
+  // --- Group tag (optional) ---
+  final String? groupId;
+
   Bill({
     required this.id,
     required this.title,
@@ -48,6 +51,7 @@ class Bill {
     this.paidByUid,
     required this.settledUids,
     required this.partialPaymentsByUid,
+    this.groupId,
   });
 
   factory Bill.fromFirestore(String id, Map<String, dynamic> data) {
@@ -87,6 +91,7 @@ class Bill {
           (key, value) => MapEntry(key, (value as num).toDouble()),
         ),
       ),
+      groupId: data['groupId'],
     );
   }
 
@@ -110,6 +115,7 @@ class Bill {
       'paidByUid': paidByUid,
       'settledUids': settledUids,
       'partialPaymentsByUid': partialPaymentsByUid,
+      'groupId': groupId,
       'createdAt': DateTime.now(),
     };
   }

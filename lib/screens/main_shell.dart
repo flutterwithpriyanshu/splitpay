@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/screens/home_screen.dart';
-import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/screens/wallet_screen.dart';
+import 'package:splitpay/screens/friends_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -14,15 +14,11 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  void _goToHome() {
-    setState(() => _currentIndex = 0);
-  }
-
   @override
   Widget build(BuildContext context) {
     final screens = [
       const HomeScreen(),
-      AddBillScreen(onBillSaved: _goToHome), // pass callback here
+      const FriendsScreen(),
       const WalletScreen(),
     ];
 
@@ -49,7 +45,7 @@ class _MainShellState extends State<MainShell> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(index: 0, icon: Icons.home_rounded, label: 'Home'),
-                _buildNavItem(index: 1, icon: Icons.add_circle_rounded, label: 'Add Bill'),
+                _buildNavItem(index: 1, icon: Icons.people_alt_rounded, label: 'Friends'),
                 _buildNavItem(index: 2, icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
               ],
             ),

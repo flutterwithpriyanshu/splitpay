@@ -10,6 +10,7 @@ import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/settings_screen.dart';
+import 'package:splitpay/screens/add_bill_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AddBillScreen(
+                onBillSaved: () => Navigator.of(context).pop(),
+              ),
+            ),
+          );
+        },
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add_rounded, color: Colors.white),
+      ),
       body: SafeArea(
         child: StreamBuilder<List<Friend>>(
           stream: FriendService.streamFriends(),
