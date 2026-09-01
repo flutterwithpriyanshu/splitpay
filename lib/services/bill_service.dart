@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:splitpay/model/bill.dart';
+import 'package:splitpay/services/local_notification_service.dart';
 
 class BillService {
   static final _db = FirebaseFirestore.instance;
@@ -66,6 +67,7 @@ class BillService {
 
   static Future<void> addBill(Bill bill) async {
     await _db.collection('bills').add(bill.toFirestore(_uid));
+    await LocalNotificationService.billAdded(bill.title, bill.amount);
   }
 
   static Future<void> updateBill(String billId, Bill bill) async {
@@ -84,10 +86,14 @@ class BillService {
       'paidByUid': bill.paidByUid,
       // settledFriendIds and settledUids intentionally NOT touched here.
     });
+    await LocalNotificationService.billEdited(bill.title);
   }
 
-  static Future<void> deleteBill(String billId) {
-    return _db.collection('bills').doc(billId).delete();
+  static Future<void> deleteBill(String billId) async {
+    final doc = await _db.collection('bills').doc(billId).get();
+    final title = doc.data()?['title'] ?? 'Bill';
+    await _db.collection('bills').doc(billId).delete();
+    await LocalNotificationService.billDeleted(title);
   }
 
   /// Applies a custom payment amount toward your balance with [friendId],
@@ -195,6 +201,13 @@ class BillService {
     }
 
     await batch.commit();
+
+    final friendDoc = await _db.collection('friends').doc(friendId).get();
+    final friendName = friendDoc.data()?['name'];
+    await LocalNotificationService.settledUp(
+      friendName: friendName,
+      amount: amount,
+    );
   }
 
   /// Marks YOUR OWN participation as settled on every bill created by
@@ -215,5 +228,6 @@ class BillService {
       }
     }
     await batch.commit();
+    await LocalNotificationService.settledUp();
   }
 }
