@@ -73,11 +73,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _isSaving = true);
     try {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'fullName': name,
         'phoneNumber': phone,
         'upiId': upi,
-      });
+      }, SetOptions(merge: true));
       if (!mounted) return;
       Navigator.of(context).pop(true); // return true so Settings can refresh
     } catch (e) {
