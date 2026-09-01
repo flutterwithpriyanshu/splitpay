@@ -28,7 +28,7 @@ class LocalNotificationService {
     );
 
     await _plugin.initialize(
-      const InitializationSettings(android: androidInit, iOS: iosInit),
+      settings: const InitializationSettings(android: androidInit, iOS: iosInit),
     );
 
     // Android 13+ needs the runtime notification permission separately.
@@ -40,10 +40,10 @@ class LocalNotificationService {
 
   static Future<void> _show(String title, String body) async {
     await _plugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000, // unique-ish id
-      title,
-      body,
-      const NotificationDetails(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000, // unique-ish id
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
         android: _channel,
         iOS: DarwinNotificationDetails(),
       ),
