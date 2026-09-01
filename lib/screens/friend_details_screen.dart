@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:splitpay/core/upi_config.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/model/transaction.dart';
@@ -24,6 +23,25 @@ class FriendDetailsScreen extends StatelessWidget {
   final Friend friend;
 
   const FriendDetailsScreen({super.key, required this.friend});
+
+  /// Fetches the friend's REAL UPI ID + name from their own user doc.
+  /// Only works for linked friends — unlinked friends have no account,
+  /// so there's nowhere to read a UPI ID from.
+  Future<Map<String, String>?> _fetchFriendUpiInfo() async {
+    if (!friend.isLinked) return null;
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(friend.linkedUid)
+        .get();
+    final data = doc.data();
+    final upiId = (data?['upiId'] as String?)?.trim();
+    if (upiId == null || upiId.isEmpty) return null;
+    final name = (data?['fullName'] as String?)?.trim();
+    return {
+      'upiId': upiId,
+      'name': (name == null || name.isEmpty) ? friend.name : name,
+    };
+  }
 
   Future<_SettleResult?> _showSettleSheet(
     BuildContext context, {
@@ -112,20 +130,34 @@ class FriendDetailsScreen extends StatelessWidget {
                           onChanged: (v) => setSheetState(() => method = v!),
                         ),
                       ),
-                      Expanded(
-                        child: RadioListTile<PaymentMethod>(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'UPI',
-                            style: GoogleFonts.inter(fontSize: 13),
+                      // UPI only offered when this friend is linked — an
+                      // unlinked friend has no account, so there's no
+                      // real UPI ID to pay into.
+                      if (friend.isLinked)
+                        Expanded(
+                          child: RadioListTile<PaymentMethod>(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              'UPI',
+                              style: GoogleFonts.inter(fontSize: 13),
+                            ),
+                            value: PaymentMethod.upi,
+                            groupValue: method,
+                            onChanged: (v) => setSheetState(() => method = v!),
                           ),
-                          value: PaymentMethod.upi,
-                          groupValue: method,
-                          onChanged: (v) => setSheetState(() => method = v!),
                         ),
-                      ),
                     ],
                   ),
+                  if (!friend.isLinked) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'UPI is only available for friends with a SplitPay account.',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () {
@@ -232,18 +264,32 @@ class FriendDetailsScreen extends StatelessWidget {
     }
   }
 
-  /// Handles the UPI branch: launch intent, ask user to confirm the
-  /// payment actually went through (client-side UPI response can't be
-  /// trusted as proof), then record same as cash if confirmed.
+  /// Handles the UPI branch: fetch the friend's REAL UPI ID, launch
+  /// intent, then ask user to confirm the payment actually went through
+  /// (client-side UPI response can't be trusted as proof).
   Future<void> _handleUpiSettlement(
     BuildContext context, {
     required _SettleResult result,
     required bool youOwe,
     required double outstanding,
   }) async {
+    final upiInfo = await _fetchFriendUpiInfo();
+    if (upiInfo == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${friend.name} hasn\'t set up a UPI ID yet. Try Cash instead.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     final launchResult = await UpiService.launchUpiPayment(
-      upiId: UpiConfig.upiId,
-      receiverName: UpiConfig.receiverName,
+      upiId: upiInfo['upiId']!,
+      receiverName: upiInfo['name']!,
       amount: result.amount,
     );
 

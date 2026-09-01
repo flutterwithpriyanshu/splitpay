@@ -178,6 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final name = _profile?['fullName'] ?? 'User';
     final phone = _profile?['phoneNumber'] ?? '-';
+    final upiId = _profile?['upiId'] ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -266,6 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     builder: (_) => EditProfileScreen(
                       initialName: name,
                       initialPhone: phone,
+                      initialUpi: upiId,
                     ),
                   ),
                 );

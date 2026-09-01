@@ -3,11 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/upi_utils.dart';
 import 'package:splitpay/screens/main_shell.dart';
 
 /// Shown once, right after a brand-new Google sign-in, because Google
-/// gives us name + email but never a phone number — and phone number is
-/// mandatory here (it's how the friend-linking system finds people).
+/// gives us name + email but never a phone number or UPI ID — and both
+/// are mandatory here (phone is how friend-linking finds people, UPI ID
+/// is how settlement payments get sent).
 class CompleteProfileScreen extends StatefulWidget {
   final String uid;
   final String name;
@@ -26,7 +28,15 @@ class CompleteProfileScreen extends StatefulWidget {
 
 class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   final _phoneController = TextEditingController();
+  final _upiController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _upiController.dispose();
+    super.dispose();
+  }
 
   void _showError(String message) {
     ScaffoldMessenger.of(
@@ -40,6 +50,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       _showError('Please enter your phone number');
       return;
     }
+    final upi = _upiController.text.trim();
+    if (upi.isEmpty) {
+      _showError('Please enter your UPI ID');
+      return;
+    }
+    if (!isValidUpiFormat(upi)) {
+      _showError('Enter a valid UPI ID, e.g. name@bank');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -47,6 +66,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
         'fullName': widget.name,
         'phoneNumber': normalizePhone(phone),
+        'upiId': upi,
         'email': widget.email,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -68,12 +88,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 40),
               Text(
                 'One more thing',
                 style: GoogleFonts.inter(
@@ -84,13 +104,22 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'We need your phone number so friends can find and split bills with you.',
+                'We need your phone number so friends can find and split bills with you, and your UPI ID so you can receive settlement payments.',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 24),
+              Text(
+                'Phone Number',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -103,6 +132,37 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'UPI ID',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _upiController,
+                style: GoogleFonts.inter(fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: 'yourname@bank',
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Used to receive settlement payments via UPI.',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 24),

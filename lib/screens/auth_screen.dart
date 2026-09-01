@@ -8,6 +8,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/upi_utils.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:splitpay/screens/complete_profile_screen.dart';
 
@@ -29,6 +30,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _upiController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -43,6 +45,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _upiController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -84,6 +87,15 @@ class _AuthScreenState extends State<AuthScreen> {
         _showError('Please enter your phone number');
         return;
       }
+      final upi = _upiController.text.trim();
+      if (upi.isEmpty) {
+        _showError('Please enter your UPI ID');
+        return;
+      }
+      if (!isValidUpiFormat(upi)) {
+        _showError('Enter a valid UPI ID, e.g. name@bank');
+        return;
+      }
       if (password.length < 6) {
         _showError('Password must be at least 6 characters');
         return;
@@ -108,6 +120,7 @@ class _AuthScreenState extends State<AuthScreen> {
             .set({
               'fullName': _nameController.text.trim(),
               'phoneNumber': normalizePhone(_phoneController.text.trim()),
+              'upiId': _upiController.text.trim(),
               'email': email,
               'createdAt': FieldValue.serverTimestamp(),
             });
@@ -318,6 +331,21 @@ class _AuthScreenState extends State<AuthScreen> {
                     controller: _phoneController,
                     hint: '(555) 000-0000',
                     keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildLabel('UPI ID'),
+                  const SizedBox(height: 8),
+                  _buildField(
+                    controller: _upiController,
+                    hint: 'yourname@bank',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Used to receive settlement payments via UPI.',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 16),
                 ],
