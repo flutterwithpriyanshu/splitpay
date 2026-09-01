@@ -2,20 +2,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/upi_config.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/model/transaction.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/transaction_service.dart';
+import 'package:splitpay/services/upi_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
+
+enum PaymentMethod { cash, upi }
+
+class _SettleResult {
+  final double amount;
+  final PaymentMethod method;
+  _SettleResult(this.amount, this.method);
+}
 
 class FriendDetailsScreen extends StatelessWidget {
   final Friend friend;
 
   const FriendDetailsScreen({super.key, required this.friend});
 
-  Future<double?> _showSettleSheet(
+  Future<_SettleResult?> _showSettleSheet(
     BuildContext context, {
     required double outstanding,
     required bool youOwe,
@@ -23,8 +33,9 @@ class FriendDetailsScreen extends StatelessWidget {
     final controller = TextEditingController(
       text: outstanding.toStringAsFixed(2),
     );
+    PaymentMethod method = PaymentMethod.cash;
 
-    return showModalBottomSheet<double>(
+    return showModalBottomSheet<_SettleResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
@@ -32,101 +43,292 @@ class FriendDetailsScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Settle Up',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
-              const SizedBox(height: 8),
-              Text(
-                youOwe
-                    ? 'You owe ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
-                    : '${friend.name} owes you ₹${outstanding.toStringAsFixed(0)}',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Amount to settle',
-                  filled: true,
-                  fillColor: AppColors.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Settle Up',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  final val = double.tryParse(controller.text.trim());
-                  if (val == null || val <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Enter a valid amount')),
-                    );
-                    return;
-                  }
-                  if (val > outstanding + 0.01) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Amount cannot exceed ₹${outstanding.toStringAsFixed(0)}',
+                  const SizedBox(height: 8),
+                  Text(
+                    youOwe
+                        ? 'You owe ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
+                        : '${friend.name} owes you ₹${outstanding.toStringAsFixed(0)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Amount to settle',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Payment Method',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<PaymentMethod>(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            'Cash',
+                            style: GoogleFonts.inter(fontSize: 13),
+                          ),
+                          value: PaymentMethod.cash,
+                          groupValue: method,
+                          onChanged: (v) => setSheetState(() => method = v!),
                         ),
                       ),
-                    );
-                    return;
-                  }
-                  Navigator.pop(context, val);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                      Expanded(
+                        child: RadioListTile<PaymentMethod>(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            'UPI',
+                            style: GoogleFonts.inter(fontSize: 13),
+                          ),
+                          value: PaymentMethod.upi,
+                          groupValue: method,
+                          onChanged: (v) => setSheetState(() => method = v!),
+                        ),
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Text(
-                  'Confirm',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      final val = double.tryParse(controller.text.trim());
+                      if (val == null || val <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Enter a valid amount')),
+                        );
+                        return;
+                      }
+                      if (val > outstanding + 0.01) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Amount cannot exceed ₹${outstanding.toStringAsFixed(0)}',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.pop(context, _SettleResult(val, method));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(
+                      'Continue',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
+  /// Writes the transaction + updates bill settlement state. Shared by
+  /// both the Cash path and the confirmed-UPI path.
+  Future<void> _recordSettlement(
+    BuildContext context, {
+    required double entered,
+    required bool youOwe,
+    required double outstanding,
+    String? note,
+  }) async {
+    try {
+      await TransactionService.addTransaction(
+        personName: friend.name,
+        amount: entered,
+        type: youOwe ? TransactionType.sent : TransactionType.received,
+        note: note,
+      );
+
+      await BillService.settlePartialForFriend(
+        friendId: friend.id,
+        linkedUid: friend.isLinked ? friend.linkedUid : null,
+        youOwe: youOwe,
+        amount: entered,
+      );
+
+      if (friend.isLinked) {
+        final myProfile = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(FirebaseAuth.instance.currentUser!.uid)
+            .get();
+        final myName = myProfile.data()?['fullName'] ?? 'A friend';
+
+        await TransactionService.addTransactionForUid(
+          targetUid: friend.linkedUid!,
+          personName: myName,
+          amount: entered,
+          type: youOwe ? TransactionType.received : TransactionType.sent,
+          note: note,
+        );
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              entered >= outstanding - 0.01
+                  ? 'Settled up!'
+                  : 'Partial payment recorded',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Settle Up failed: $e')));
+      }
+    }
+  }
+
+  /// Handles the UPI branch: launch intent, ask user to confirm the
+  /// payment actually went through (client-side UPI response can't be
+  /// trusted as proof), then record same as cash if confirmed.
+  Future<void> _handleUpiSettlement(
+    BuildContext context, {
+    required _SettleResult result,
+    required bool youOwe,
+    required double outstanding,
+  }) async {
+    final launchResult = await UpiService.launchUpiPayment(
+      upiId: UpiConfig.upiId,
+      receiverName: UpiConfig.receiverName,
+      amount: result.amount,
+    );
+
+    if (launchResult == UpiLaunchResult.noAppFound) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No UPI app found. Please install a UPI app or choose Cash.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (launchResult == UpiLaunchResult.failed) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open UPI app.')),
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Confirm Payment',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Did the UPI payment of ₹${result.amount.toStringAsFixed(0)} go through?',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Not yet / Cancelled',
+              style: GoogleFonts.inter(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Yes, paid',
+              style: GoogleFonts.inter(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment not recorded')));
+      }
+      return;
+    }
+
+    await _recordSettlement(
+      context,
+      entered: result.amount,
+      youOwe: youOwe,
+      outstanding: outstanding,
+      note: 'Paid via UPI',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const Scaffold(body: SizedBox.shrink());
-    }
-    final myUid = user.uid;
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -357,80 +559,29 @@ class FriendDetailsScreen extends StatelessWidget {
                           onPressed: balance == 0
                               ? null
                               : () async {
-                                  final entered = await _showSettleSheet(
+                                  final result = await _showSettleSheet(
                                     context,
                                     outstanding: outstanding,
                                     youOwe: youOwe,
                                   );
-                                  if (entered == null) return;
+                                  if (result == null) return;
 
-                                  try {
-                                    await TransactionService.addTransaction(
-                                      personName: friend.name,
-                                      amount: entered,
-                                      type: youOwe
-                                          ? TransactionType.sent
-                                          : TransactionType.received,
-                                    );
-
-                                    await BillService.settlePartialForFriend(
-                                      friendId: friend.id,
-                                      linkedUid: friend.isLinked
-                                          ? friend.linkedUid
-                                          : null,
+                                  if (result.method == PaymentMethod.cash) {
+                                    await _recordSettlement(
+                                      context,
+                                      entered: result.amount,
                                       youOwe: youOwe,
-                                      amount: entered,
+                                      outstanding: outstanding,
                                     );
-
-                                    if (friend.isLinked) {
-                                      final myProfile = await FirebaseFirestore
-                                          .instance
-                                          .collection('users')
-                                          .doc(
-                                            FirebaseAuth
-                                                .instance
-                                                .currentUser!
-                                                .uid,
-                                          )
-                                          .get();
-                                      final myName =
-                                          myProfile.data()?['fullName'] ??
-                                          'A friend';
-
-                                      await TransactionService.addTransactionForUid(
-                                        targetUid: friend.linkedUid!,
-                                        personName: myName,
-                                        amount: entered,
-                                        type: youOwe
-                                            ? TransactionType.received
-                                            : TransactionType.sent,
-                                      );
-                                    }
-
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            entered >= outstanding - 0.01
-                                                ? 'Settled up!'
-                                                : 'Partial payment recorded',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Settle Up failed: $e'),
-                                        ),
-                                      );
-                                    }
+                                    return;
                                   }
+
+                                  await _handleUpiSettlement(
+                                    context,
+                                    result: result,
+                                    youOwe: youOwe,
+                                    outstanding: outstanding,
+                                  );
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
