@@ -8,6 +8,7 @@ import 'dart:convert';
 /// Handles SDK init, player-id save to Firestore, and sending pushes
 /// to other users when a bill is added/edited/deleted/settled.
 class OneSignalService {
+
   static const String _appId = 'app id';
   static const String _restApiKey =
       'key';
