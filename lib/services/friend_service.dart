@@ -40,6 +40,14 @@ class FriendService {
     return doc.data();
   }
 
+  /// Full name of any user by uid — used to label things shared by
+  /// someone (a bill, a group) who isn't necessarily in your own
+  /// friends collection under that uid.
+  static Future<String> getUserName(String uid) async {
+    final doc = await _db.collection('users').doc(uid).get();
+    return doc.data()?['fullName'] ?? 'Someone';
+  }
+
   /// Ensures [targetUid]'s friend list contains an entry representing
   /// the CURRENT signed-in user. If one already exists, does nothing.
   static Future<void> ensureReciprocalFriend(String targetUid) async {

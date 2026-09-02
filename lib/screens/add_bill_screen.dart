@@ -696,7 +696,24 @@ class _AddBillScreenState extends State<AddBillScreen> {
                     ),
                   );
                 }
-                if (_liveFriends.isEmpty) {
+
+                // Inside a group, only show that group's members — plus
+                // anyone just added via "Add Friend" for this one bill
+                // (already in _selectedFriendIds but not a group member),
+                // so their chip doesn't vanish right after adding them.
+                final visibleFriends = widget.group != null
+                    ? _liveFriends
+                          .where(
+                            (f) =>
+                                widget.group!.memberFriendIds.contains(
+                                  f.id,
+                                ) ||
+                                _selectedFriendIds.contains(f.id),
+                          )
+                          .toList()
+                    : _liveFriends;
+
+                if (visibleFriends.isEmpty) {
                   return Text(
                     'No friends yet — tap "Add Friend" above',
                     style: GoogleFonts.inter(
@@ -709,7 +726,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                 return Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: _liveFriends.map((friend) {
+                  children: visibleFriends.map((friend) {
                     final selected = _selectedFriendIds.contains(friend.id);
                     return GestureDetector(
                       onTap: () => _toggleFriend(friend.id),

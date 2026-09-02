@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' hide Group;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/model/bill.dart';
@@ -15,6 +16,7 @@ import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
+import 'package:splitpay/screens/shared_group_details_screen.dart';
 
 /// Bottom-nav "Friends" screen. Holds two tabs:
 ///   - Groups: bills that involve 2+ other people, grouped by who's on them
@@ -349,6 +351,7 @@ class _FriendsScreenState extends State<FriendsScreen>
   void _showCreateGroupSheet(BuildContext context) {
     final nameController = TextEditingController();
     final Set<String> selectedIds = {};
+    List<Friend> liveFriends = [];
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -399,6 +402,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                       stream: FriendService.streamFriends(),
                       builder: (context, snapshot) {
                         final friends = snapshot.data ?? [];
+                        liveFriends = friends;
                         if (friends.isEmpty) {
                           return Text(
                             'Add a friend first from the Friends tab.',
@@ -465,12 +469,32 @@ class _FriendsScreenState extends State<FriendsScreen>
                               }
 
                               setSheetState(() => isSaving = true);
-                              await GroupService.createGroup(
-                                name,
-                                selectedIds.toList(),
-                              );
-                              if (sheetContext.mounted) {
-                                Navigator.pop(sheetContext);
+                              try {
+                                final selectedMembers = liveFriends
+                                    .where(
+                                      (f) => selectedIds.contains(f.id),
+                                    )
+                                    .toList();
+                                await GroupService.createGroup(
+                                  name,
+                                  selectedMembers,
+                                );
+                                if (sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
+                                }
+                              } catch (e) {
+                                if (sheetContext.mounted) {
+                                  setSheetState(() => isSaving = false);
+                                  ScaffoldMessenger.of(
+                                    sheetContext,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Could not create group. Try again.',
+                                      ),
+                                    ),
+                                  );
+                                }
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -673,13 +697,42 @@ class _GroupsTab extends StatelessWidget {
     return total;
   }
 
+  /// Net signed balance for a bill: positive = you're owed, negative = you owe.
+  double _netForBill(Bill bill, Map<String, Friend> friendById) {
+    if (bill.paidBy == 'me') {
+      return _remainingForBill(bill, friendById);
+    }
+    return -bill.remainingMyShare;
+  }
+
+  static const _kCardColors = [
+    Color(0xFFFFB37B),
+    Color(0xFF7ED0A6),
+    Color(0xFF8FB8F6),
+    Color(0xFFC7A6F2),
+    Color(0xFFF29AB0),
+  ];
+
+  Color _colorFor(String seed) =>
+      _kCardColors[seed.hashCode.abs() % _kCardColors.length];
+
+  IconData _iconFor(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('flat') || n.contains('home') || n.contains('rent')) {
+      return Icons.home_rounded;
+    }
+    if (n.contains('trip') || n.contains('travel')) {
+      return Icons.flight_takeoff_rounded;
+    }
+    return Icons.receipt_long_rounded;
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Friend>>(
       stream: FriendService.streamFriends(),
       builder: (context, friendSnapshot) {
         final friends = friendSnapshot.data ?? [];
-        final nameById = {for (final f in friends) f.id: f.name};
         final friendById = {for (final f in friends) f.id: f};
 
         return StreamBuilder<List<Group>>(
@@ -688,125 +741,193 @@ class _GroupsTab extends StatelessWidget {
             if (groupSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            final groups = groupSnapshot.data ?? [];
+            final ownGroups = groupSnapshot.data ?? [];
 
-            if (groups.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(
-                    'No groups yet. Tap the group icon above to create one.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
+            // Groups someone else created that you're a linked member of —
+            // show up immediately, no bill needed first.
+            return StreamBuilder<List<Group>>(
+              stream: GroupService.streamSharedGroups(),
+              builder: (context, sharedGroupSnapshot) {
+                final sharedGroups = sharedGroupSnapshot.data ?? [];
+                final groups = [...ownGroups, ...sharedGroups]
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                if (groups.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(
+                        'No groups yet. Tap the group icon above to create one.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }
+                  );
+                }
 
-            return StreamBuilder<List<Bill>>(
-              stream: BillService.streamBills(),
-              builder: (context, billSnapshot) {
-                final allBills = billSnapshot.data ?? [];
+                return StreamBuilder<List<Bill>>(
+                  stream: BillService.streamBills(),
+                  builder: (context, billSnapshot) {
+                    final allBills = billSnapshot.data ?? [];
 
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                  itemCount: groups.length,
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-                    final memberNames = group.memberFriendIds
-                        .map((id) => nameById[id] ?? 'Unknown')
-                        .join(', ');
-
-                    final groupBills = allBills
-                        .where((b) => b.groupId == group.id)
-                        .toList();
-
-                    double totalOutstanding = 0;
-                    for (final bill in groupBills) {
-                      totalOutstanding += _remainingForBill(bill, friendById);
+                    // Per-group net + overall net, for own groups only (the
+                    // only ones we have bill data for here).
+                    final netByGroupId = <String, double>{};
+                    double overallNet = 0;
+                    for (final group in ownGroups) {
+                      final groupBills = allBills
+                          .where((b) => b.groupId == group.id)
+                          .toList();
+                      double net = 0;
+                      for (final bill in groupBills) {
+                        net += _netForBill(bill, friendById);
+                      }
+                      netByGroupId[group.id] = net;
+                      overallNet += net;
                     }
 
-                    return GestureDetector(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => GroupDetailsScreen(group: group),
-                        ),
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: AppColors.primary.withOpacity(
-                                0.15,
-                              ),
-                              child: Icon(
-                                Icons.groups_rounded,
-                                color: AppColors.primary,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    group.name,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
-                                    ),
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                      itemCount: groups.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _OverallLine(net: overallNet),
+                          );
+                        }
+                        final group = groups[index - 1];
+                        final isOwn = group.ownerId ==
+                            FirebaseAuth.instance.currentUser!.uid;
+
+                        final groupBills = isOwn
+                            ? allBills
+                                  .where((b) => b.groupId == group.id)
+                                  .toList()
+                            : <Bill>[];
+
+                        final net = netByGroupId[group.id] ?? 0;
+                        final isSettled = net.abs() <= 0.009;
+                        final color = _colorFor(group.id);
+
+                        String subtitle;
+                        Color subtitleColor;
+                        if (!isOwn) {
+                          subtitle = '';
+                          subtitleColor = AppColors.textSecondary;
+                        } else if (groupBills.isEmpty) {
+                          subtitle = 'No bills yet';
+                          subtitleColor = AppColors.textSecondary;
+                        } else if (isSettled) {
+                          subtitle = 'Settled up';
+                          subtitleColor = AppColors.textSecondary;
+                        } else if (net > 0) {
+                          subtitle = 'you are owed ₹${net.toStringAsFixed(2)}';
+                          subtitleColor = AppColors.success;
+                        } else {
+                          subtitle = 'you owe ₹${(-net).toStringAsFixed(2)}';
+                          subtitleColor = AppColors.warning;
+                        }
+
+                        return GestureDetector(
+                          onTap: () {
+                            if (isOwn) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      GroupDetailsScreen(group: group),
+                                ),
+                              );
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => SharedGroupDetailsScreen(
+                                    group: group,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    memberNames.isEmpty
-                                        ? 'No members'
-                                        : memberNames,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            child: Row(
                               children: [
-                                Text(
-                                  '${groupBills.length} bill${groupBills.length == 1 ? '' : 's'}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(
+                                    _iconFor(group.name),
+                                    color: Colors.white,
+                                    size: 22,
                                   ),
                                 ),
-                                Text(
-                                  totalOutstanding <= 0.009
-                                      ? 'Settled up'
-                                      : '₹${totalOutstanding.toStringAsFixed(0)} due',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: totalOutstanding <= 0.009
-                                        ? AppColors.textSecondary
-                                        : AppColors.error,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        group.name,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      if (isOwn)
+                                        Text(
+                                          subtitle,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: subtitleColor,
+                                          ),
+                                        )
+                                      else
+                                        FutureBuilder<String>(
+                                          future: FriendService.getUserName(
+                                            group.ownerId,
+                                          ),
+                                          builder: (context, ownerSnap) {
+                                            final ownerName =
+                                                ownerSnap.data ?? '...';
+                                            return Text(
+                                              'Shared by $ownerName',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                color:
+                                                    AppColors.textSecondary,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                    ],
                                   ),
                                 ),
+                                if (!isOwn)
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: AppColors.textSecondary,
+                                  ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
@@ -815,6 +936,38 @@ class _GroupsTab extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _OverallLine extends StatelessWidget {
+  final double net;
+
+  const _OverallLine({required this.net});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSettled = net.abs() <= 0.009;
+    final String label;
+    final Color color;
+    if (isSettled) {
+      label = 'Overall, you are settled up';
+      color = AppColors.textSecondary;
+    } else if (net > 0) {
+      label = 'Overall, you are owed ₹${net.toStringAsFixed(2)}';
+      color = AppColors.success;
+    } else {
+      label = 'Overall, you owe ₹${(-net).toStringAsFixed(2)}';
+      color = AppColors.warning;
+    }
+
+    return Text(
+      label,
+      style: GoogleFonts.inter(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: color,
+      ),
     );
   }
 }

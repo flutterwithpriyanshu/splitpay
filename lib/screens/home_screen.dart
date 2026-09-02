@@ -11,6 +11,8 @@ import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/settings_screen.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
+import 'package:splitpay/services/group_service.dart';
+import 'package:splitpay/model/group.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -76,6 +78,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         sharedSnapshot.connectionState ==
                         ConnectionState.waiting;
 
+                    return StreamBuilder<List<Group>>(
+                      stream: GroupService.streamSharedGroups(),
+                      builder: (context, sharedGroupSnapshot) {
+                        final List<Group> sharedGroupsForNames =
+                            sharedGroupSnapshot.data ?? <Group>[];
+                        final Map<String, String> groupNameById = {
+                          for (final g in sharedGroupsForNames) g.id: g.name,
+                        };
+
                     final billsLoading = ownLoading || sharedLoading;
 
                     double youOwe = 0;
@@ -140,9 +151,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               nameByLinkedUid,
                               friendById,
                               myUid,
+                              groupNameById,
                             ),
                         ],
                       ),
+                    );
+                      },
                     );
                   },
                 );
@@ -415,6 +429,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Map<String, String> nameByLinkedUid,
     Map<String, Friend> friendById,
     String myUid,
+    Map<String, String> groupNameById,
   ) {
     return items.map((item) {
       final bill = item.bill;
@@ -439,7 +454,12 @@ class _HomeScreenState extends State<HomeScreen> {
         displayAmount = bill.amount;
       } else {
         final creatorName = nameByLinkedUid[bill.ownerId] ?? 'Someone';
-        subtitle = 'Shared by $creatorName';
+        final groupName = bill.groupId != null
+            ? groupNameById[bill.groupId]
+            : null;
+        subtitle = groupName != null
+            ? 'Shared by $creatorName · $groupName'
+            : 'Shared by $creatorName';
         isSettled = bill.settledUids.contains(myUid);
         displayAmount = bill.sharesByUid[myUid] ?? 0;
       }
