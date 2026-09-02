@@ -14,7 +14,7 @@ import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
-import 'package:splitpay/core/debt_simplifier.dart';
+import 'package:splitpay/screens/group_splitup_screen.dart';
 import 'package:splitpay/screens/group_details/widgets/header_pill.dart';
 import 'package:splitpay/screens/group_details/widgets/balance_line.dart';
 import 'package:splitpay/screens/group_details/widgets/tabs_row.dart';
@@ -135,7 +135,7 @@ class GroupDetailsScreen extends StatelessWidget {
     return const Color(0xFFE9E7FB);
   }
 
-  Color _iconColorFor(Color bg) => Colors.black.withOpacity(0.55);
+  Color _iconColorFor(Color bg) => Colors.black.withValues(alpha: 0.55);
 
   /// Nets every bill down to one balance per group member, runs the debt
   /// simplifier over it, and shows the resulting "X pays Y ₹Z" list — the
@@ -145,92 +145,9 @@ class GroupDetailsScreen extends StatelessWidget {
     List<Bill> bills,
     List<Friend> members,
   ) {
-    final netByUid = <String, double>{};
-    final nameByUid = <String, String>{};
-
-    for (final bill in bills) {
-      for (final uid in bill.participantUids) {
-        netByUid[uid] = (netByUid[uid] ?? 0) + bill.balanceForUid(uid);
-      }
-    }
-    for (final friend in members) {
-      if (friend.isLinked) nameByUid[friend.linkedUid!] = friend.name;
-    }
-    nameByUid[group.ownerId] = nameByUid[group.ownerId] ?? 'Owner';
-
-    final simplified = simplifyDebts(netByUid);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Simplified balances',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'The fewest payments needed to settle everyone up.',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (simplified.isEmpty)
-                Text(
-                  'Everyone is settled up 🎉',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                )
-              else
-                ...simplified.map(
-                  (d) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${nameByUid[d.fromUid] ?? 'Someone'} pays ${nameByUid[d.toUid] ?? 'someone'}',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '₹${d.amount.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.warning,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
   }
 
   @override

@@ -123,7 +123,10 @@ class _FriendsScreenState extends State<FriendsScreen>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: const [_GroupsTab(), _FriendsTab()],
+                children: [
+                  const _GroupsTab(),
+                  _FriendsTab(onAddFriend: () => _showAddFriendSheet(context)),
+                ],
               ),
             ),
           ],
@@ -671,7 +674,9 @@ class _FriendsScreenState extends State<FriendsScreen>
 
 /// Friends tab — same list/balance logic as ManageFriendsScreen, inline.
 class _FriendsTab extends StatelessWidget {
-  const _FriendsTab();
+  const _FriendsTab({required this.onAddFriend});
+
+  final VoidCallback onAddFriend;
 
   double _balanceForFriend(List<Bill> bills, Friend friend) {
     double balance = 0;
@@ -706,12 +711,23 @@ class _FriendsTab extends StatelessWidget {
         }
         if (friends.isEmpty) {
           return Center(
-            child: Text(
-              'No friends added yet',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'No friends added yet',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: onAddFriend,
+                  icon: const Icon(Icons.person_add_alt_1_rounded),
+                  label: const Text('Add Friend'),
+                ),
+              ],
             ),
           );
         }

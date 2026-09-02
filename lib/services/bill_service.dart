@@ -195,8 +195,9 @@ class BillService {
       final bill = Bill.fromFirestore(doc.id, doc.data());
 
       if (youOwe) {
-        if (bill.paidBy != friendId)
+        if (bill.paidBy != friendId) {
           continue; // only bills where this friend paid
+        }
         final owed = bill.remainingMyShare;
         if (owed <= 0.009) continue;
         final pay = owed < remainingToApply ? owed : remainingToApply;
@@ -206,8 +207,9 @@ class BillService {
         final update = <String, dynamic>{'myPartialPayment': newPaid};
         if (bill.myShare - newPaid <= 0.009) {
           final settledFriendIds = List<String>.from(bill.settledFriendIds);
-          if (!settledFriendIds.contains(friendId))
+          if (!settledFriendIds.contains(friendId)) {
             settledFriendIds.add(friendId);
+          }
           update['settledFriendIds'] = settledFriendIds;
           if (linkedUid != null) {
             final settledUids = List<String>.from(bill.settledUids);
@@ -232,8 +234,9 @@ class BillService {
         };
         if (bill.shareForFriend(friendId) - paymentsMap[friendId]! <= 0.009) {
           final settledFriendIds = List<String>.from(bill.settledFriendIds);
-          if (!settledFriendIds.contains(friendId))
+          if (!settledFriendIds.contains(friendId)) {
             settledFriendIds.add(friendId);
+          }
           update['settledFriendIds'] = settledFriendIds;
           if (linkedUid != null) {
             final settledUids = List<String>.from(bill.settledUids);

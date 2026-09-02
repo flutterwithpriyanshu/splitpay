@@ -9,7 +9,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
-import 'package:splitpay/core/debt_simplifier.dart';
+import 'package:splitpay/screens/group_splitup_screen.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/balance_line.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/tabs_row.dart';
@@ -110,84 +110,9 @@ class SharedGroupDetailsScreen extends StatelessWidget {
   /// Same "smallest set of payments to settle up" simplification the
   /// group owner sees, shown here from a member's point of view.
   void _showSimplifiedDebts(BuildContext context, List<Bill> bills) async {
-    final netByUid = <String, double>{};
-    for (final bill in bills) {
-      for (final uid in bill.participantUids) {
-        netByUid[uid] = (netByUid[uid] ?? 0) + bill.balanceForUid(uid);
-      }
-    }
-
-    final nameByUid = <String, String>{};
-    for (final uid in group.allMemberUids) {
-      nameByUid[uid] = await FriendService.getUserName(uid);
-    }
-
-    final simplified = simplifyDebts(netByUid);
-    if (!context.mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Simplified balances',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (simplified.isEmpty)
-                Text(
-                  'Everyone is settled up 🎉',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                )
-              else
-                ...simplified.map(
-                  (d) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${nameByUid[d.fromUid] ?? 'Someone'} pays ${nameByUid[d.toUid] ?? 'someone'}',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '₹${d.amount.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.warning,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
   }
 
   @override
@@ -315,12 +240,14 @@ class _SharedHeader extends StatelessWidget {
                             children: [
                               CircleAvatar(
                                 radius: 24,
-                                backgroundColor: AppColors.primary.withOpacity(
-                                  0.1,
+                                backgroundColor: AppColors.primary.withValues(
+                                  alpha: 0.1,
                                 ),
                                 child: Icon(
                                   Icons.person_rounded,
-                                  color: AppColors.primary.withOpacity(0.4),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   size: 24,
                                 ),
                               ),
@@ -402,7 +329,7 @@ class _SharedHeader extends StatelessWidget {
                     'Shared by ${snap.data ?? '...'}',
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
                 ),
@@ -539,7 +466,11 @@ class _SharedBillRow extends StatelessWidget {
               color: iconBg,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Colors.black.withOpacity(0.55), size: 20),
+            child: Icon(
+              icon,
+              color: Colors.black.withValues(alpha: 0.55),
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
