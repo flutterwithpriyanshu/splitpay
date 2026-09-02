@@ -16,6 +16,12 @@ class Group {
   final List<String> memberUids;
   final DateTime createdAt;
 
+  /// Day of the month (1-31) the group owner picked to settle up on.
+  /// Every month, on this date, every member (owner + linked members) gets
+  /// a reminder notification showing what THEY owe/are owed in this group.
+  /// Null = no recurring settle-up reminder set for this group.
+  final int? settleUpDay;
+
   Group({
     required this.id,
     required this.name,
@@ -23,7 +29,13 @@ class Group {
     required this.memberFriendIds,
     this.memberUids = const [],
     required this.createdAt,
+    this.settleUpDay,
   });
+
+  /// All member uids who can be reminded / who can add bills directly
+  /// (owner + every linked member). Local-only (non-linked) friends can't
+  /// receive push/local reminders since they don't have a SplitPay account.
+  List<String> get allMemberUids => [ownerId, ...memberUids];
 
   factory Group.fromFirestore(String id, Map<String, dynamic> data) {
     return Group(
@@ -33,6 +45,7 @@ class Group {
       memberFriendIds: List<String>.from(data['memberFriendIds'] ?? []),
       memberUids: List<String>.from(data['memberUids'] ?? []),
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      settleUpDay: data['settleUpDay'] as int?,
     );
   }
 
@@ -43,6 +56,7 @@ class Group {
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
       'createdAt': createdAt,
+      'settleUpDay': settleUpDay,
     };
   }
 }

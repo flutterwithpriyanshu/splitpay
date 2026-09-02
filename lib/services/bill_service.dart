@@ -67,6 +67,28 @@ class BillService {
         );
   }
 
+  /// All bills tagged with [groupId] that involve you — no matter who in
+  /// the group actually created the bill. Works because a bill's creator
+  /// is always included in their own `participantUids`, so "tagged with
+  /// this group AND I'm a participant" catches every group bill I'm part
+  /// of, whether I'm the group owner or just a member who added it.
+  ///
+  /// This is what lets ANY member add a bill to the group (not just the
+  /// owner) and have it show up for everyone in the group.
+  static Stream<List<Bill>> streamGroupBills(String groupId) {
+    return _db
+        .collection('bills')
+        .where('groupId', isEqualTo: groupId)
+        .where('participantUids', arrayContains: _uid)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
+              .toList()
+            ..sort((a, b) => b.date.compareTo(a.date)),
+        );
+  }
+
   static Future<void> addBill(Bill bill) async {
     await _db.collection('bills').add(bill.toFirestore(_uid));
     await LocalNotificationService.billAdded(bill.title, bill.amount);

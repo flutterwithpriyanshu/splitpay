@@ -39,8 +39,9 @@ class GroupService {
 
   static Future<Group> createGroup(
     String name,
-    List<Friend> members,
-  ) async {
+    List<Friend> members, {
+    int? settleUpDay,
+  }) async {
     final memberFriendIds = members.map((f) => f.id).toList();
     final memberUids = members
         .where((f) => f.isLinked)
@@ -52,9 +53,20 @@ class GroupService {
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
       'createdAt': Timestamp.now(),
+      'settleUpDay': settleUpDay,
     };
     final ref = await _db.collection('groups').add(data);
     return Group.fromFirestore(ref.id, data);
+  }
+
+  /// Sets/changes/clears (pass null) the monthly settle-up reminder date
+  /// for a group. Any member can read it; only shown as editable to the
+  /// owner in the UI, but it lives on the group doc so every member's app
+  /// can independently schedule their own local reminder from it.
+  static Future<void> updateSettleUpDay(String groupId, int? settleUpDay) {
+    return _db.collection('groups').doc(groupId).update({
+      'settleUpDay': settleUpDay,
+    });
   }
 
   static Future<void> updateMembers(

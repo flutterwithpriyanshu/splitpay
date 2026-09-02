@@ -15,6 +15,8 @@ import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/group_service.dart';
+import 'package:splitpay/services/local_notification_service.dart';
+import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
 import 'package:splitpay/screens/shared_group_details_screen.dart';
 
@@ -353,6 +355,7 @@ class _FriendsScreenState extends State<FriendsScreen>
     final Set<String> selectedIds = {};
     List<Friend> liveFriends = [];
     bool isSaving = false;
+    int? settleUpDay;
 
     showModalBottomSheet(
       context: context,
@@ -442,6 +445,55 @@ class _FriendsScreenState extends State<FriendsScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
+                  Text(
+                    'Settle up reminder (optional)',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showModalBottomSheet<int>(
+                        context: sheetContext,
+                        backgroundColor: AppColors.surface,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(20),
+                          ),
+                        ),
+                        builder: (pickerContext) =>
+                            DayOfMonthPicker(initialDay: settleUpDay),
+                      );
+                      if (picked != null) {
+                        setSheetState(() => settleUpDay = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.divider),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, size: 16),
+                          const SizedBox(width: 10),
+                          Text(
+                            settleUpDay == null
+                                ? 'Every month on... (tap to set)'
+                                : 'Remind every month on day $settleUpDay',
+                            style: GoogleFonts.inter(fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
@@ -467,14 +519,22 @@ class _FriendsScreenState extends State<FriendsScreen>
                               setSheetState(() => isSaving = true);
                               try {
                                 final selectedMembers = liveFriends
-                                    .where(
-                                      (f) => selectedIds.contains(f.id),
-                                    )
+                                    .where((f) => selectedIds.contains(f.id))
                                     .toList();
-                                await GroupService.createGroup(
-                                  name,
-                                  selectedMembers,
-                                );
+                                final createdGroup =
+                                    await GroupService.createGroup(
+                                      name,
+                                      selectedMembers,
+                                      settleUpDay: settleUpDay,
+                                    );
+                                if (settleUpDay != null) {
+                                  await LocalNotificationService.scheduleMonthlySettleReminder(
+                                    groupId: createdGroup.id,
+                                    groupName: createdGroup.name,
+                                    day: settleUpDay!,
+                                    myNetBalance: 0,
+                                  );
+                                }
                                 if (sheetContext.mounted) {
                                   Navigator.pop(sheetContext);
                                 }
@@ -666,35 +726,18 @@ class _FriendsTab extends StatelessWidget {
 /// Groups tab — real, persisted groups (see Group model / GroupService).
 /// Create a group with 2+ friends, then add bills straight into it from
 /// its details screen; those bills auto-split across the group's members.
-class _GroupsTab extends StatelessWidget {
+class _GroupsTab extends StatefulWidget {
   const _GroupsTab();
 
-  /// Same fix as GroupDetailsScreen._remainingForBill: a friend is tracked
-  /// either via `friendIds`/`remainingForFriend` (non-linked) OR via
-  /// `participantUids`/`remainingForUid` (linked) — never both. The old
-  /// code summed both lists unconditionally, double-counting every linked
-  /// friend's share (participantUids also always includes your own uid,
-  /// so your own share leaked into the group's "due" total too).
-  double _remainingForBill(Bill bill, Map<String, Friend> friendById) {
-    double total = 0;
-    for (final id in bill.friendIds) {
-      final friend = friendById[id];
-      if (friend != null && friend.isLinked) {
-        total += bill.remainingForUid(friend.linkedUid!);
-      } else {
-        total += bill.remainingForFriend(id);
-      }
-    }
-    return total;
-  }
+  @override
+  State<_GroupsTab> createState() => _GroupsTabState();
+}
 
-  /// Net signed balance for a bill: positive = you're owed, negative = you owe.
-  double _netForBill(Bill bill, Map<String, Friend> friendById) {
-    if (bill.paidBy == 'me') {
-      return _remainingForBill(bill, friendById);
-    }
-    return -bill.remainingMyShare;
-  }
+class _GroupsTabState extends State<_GroupsTab> {
+  // groupId -> my net balance in that group. Filled in as each group's own
+  // bill stream reports in (see _GroupNetListener below), so the Overall
+  // line and every group card stay live-updated together.
+  final Map<String, double> _netByGroupId = {};
 
   static const _kCardColors = [
     Color(0xFFFFB37B),
@@ -718,8 +761,15 @@ class _GroupsTab extends StatelessWidget {
     return Icons.receipt_long_rounded;
   }
 
+  void _reportNet(String groupId, double net) {
+    if (_netByGroupId[groupId] == net) return;
+    setState(() => _netByGroupId[groupId] = net);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+
     return StreamBuilder<List<Friend>>(
       stream: FriendService.streamFriends(),
       builder: (context, friendSnapshot) {
@@ -759,204 +809,198 @@ class _GroupsTab extends StatelessWidget {
                   );
                 }
 
-                return StreamBuilder<List<Bill>>(
-                  stream: BillService.streamBills(),
-                  builder: (context, billSnapshot) {
-                    final allBills = billSnapshot.data ?? [];
+                // Only sum groups we actually have a reported net for yet
+                // (their individual bill streams may still be loading).
+                final overallNet = groups
+                    .where((g) => _netByGroupId.containsKey(g.id))
+                    .fold<double>(0, (sum, g) => sum + _netByGroupId[g.id]!);
 
-                    // Per-group net + overall net, for own groups only (the
-                    // only ones we have bill data for here).
-                    final netByGroupId = <String, double>{};
-                    double overallNet = 0;
-                    for (final group in ownGroups) {
-                      final groupBills = allBills
-                          .where((b) => b.groupId == group.id)
-                          .toList();
-                      double net = 0;
-                      for (final bill in groupBills) {
-                        net += _netForBill(bill, friendById);
-                      }
-                      netByGroupId[group.id] = net;
-                      overallNet += net;
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                  itemCount: groups.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _OverallLine(net: overallNet),
+                      );
                     }
+                    final group = groups[index - 1];
+                    final color = _colorFor(group.id);
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                      itemCount: groups.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _OverallLine(net: overallNet),
-                          );
-                        }
-                        final group = groups[index - 1];
-                        final isOwn = group.ownerId ==
-                            FirebaseAuth.instance.currentUser!.uid;
-
-                        final groupBills = isOwn
-                            ? allBills
-                                  .where((b) => b.groupId == group.id)
-                                  .toList()
-                            : <Bill>[];
-
-                        final net = netByGroupId[group.id] ?? 0;
-                        final isSettled = net.abs() <= 0.009;
-                        final color = _colorFor(group.id);
-
-                        String subtitle;
-                        Color subtitleColor;
-                        if (!isOwn) {
-                          subtitle = '';
-                          subtitleColor = AppColors.textSecondary;
-                        } else if (groupBills.isEmpty) {
-                          subtitle = 'No bills yet';
-                          subtitleColor = AppColors.textSecondary;
-                        } else if (isSettled) {
-                          subtitle = 'Settled up';
-                          subtitleColor = AppColors.textSecondary;
-                        } else if (net > 0) {
-                          subtitle = 'you are owed ₹${net.toStringAsFixed(2)}';
-                          subtitleColor = AppColors.success;
-                        } else {
-                          subtitle = 'you owe ₹${(-net).toStringAsFixed(2)}';
-                          subtitleColor = AppColors.warning;
-                        }
-
-                        return GestureDetector(
-                          onTap: () {
-                            if (isOwn) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      GroupDetailsScreen(group: group),
-                                ),
-                              );
-                            } else {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => SharedGroupDetailsScreen(
-                                    group: group,
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: Icon(
-                                    _iconFor(group.name),
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        group.name,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      if (isOwn)
-                                        Text(
-                                          subtitle,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: subtitleColor,
-                                          ),
-                                        )
-                                      else
-                                        StreamBuilder<List<Bill>>(
-                                          stream:
-                                              BillService.streamSharedBillsFrom(
-                                            group.ownerId,
-                                          ),
-                                          builder: (context, sharedSnap) {
-                                            final myUid = FirebaseAuth
-                                                .instance.currentUser!.uid;
-                                            final groupSharedBills =
-                                                (sharedSnap.data ?? [])
-                                                    .where((b) =>
-                                                        b.groupId == group.id)
-                                                    .toList();
-                                            double sharedNet = 0;
-                                            for (final b
-                                                in groupSharedBills) {
-                                              sharedNet +=
-                                                  b.balanceForUid(myUid);
-                                            }
-                                            final sharedSettled =
-                                                sharedNet.abs() <= 0.009;
-
-                                            final String sharedSubtitle;
-                                            final Color sharedColor;
-                                            if (groupSharedBills.isEmpty) {
-                                              sharedSubtitle = 'No bills yet';
-                                              sharedColor =
-                                                  AppColors.textSecondary;
-                                            } else if (sharedSettled) {
-                                              sharedSubtitle = 'Settled up';
-                                              sharedColor =
-                                                  AppColors.textSecondary;
-                                            } else if (sharedNet > 0) {
-                                              sharedSubtitle =
-                                                  'you are owed ₹${sharedNet.toStringAsFixed(2)}';
-                                              sharedColor =
-                                                  AppColors.success;
-                                            } else {
-                                              sharedSubtitle =
-                                                  'you owe ₹${(-sharedNet).toStringAsFixed(2)}';
-                                              sharedColor =
-                                                  AppColors.warning;
-                                            }
-
-                                            return Text(
-                                              sharedSubtitle,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: sharedColor,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                    return GestureDetector(
+                      onTap: () {
+                        final isOwn = group.ownerId == myUid;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => isOwn
+                                ? GroupDetailsScreen(group: group)
+                                : SharedGroupDetailsScreen(group: group),
                           ),
                         );
                       },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                _iconFor(group.name),
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    group.name,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  _GroupNetListener(
+                                    group: group,
+                                    myUid: myUid,
+                                    friendById: friendById,
+                                    onNetChanged: (net) =>
+                                        _reportNet(group.id, net),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 );
               },
             );
           },
+        );
+      },
+    );
+  }
+}
+
+/// Streams every bill tagged to [group] that I'm part of — no matter who
+/// created it — computes my net balance from it, reports that net up to
+/// the parent (for the Overall line) via [onNetChanged], and renders the
+/// "you owe / you are owed / settled up" subtitle for this one group card.
+///
+/// This replaces the old split logic that only looked at bills the CURRENT
+/// USER personally owned (for their own groups) or only bills the GROUP
+/// OWNER personally owned (for shared groups) — which is exactly why
+/// bills added by other members weren't reflected here.
+class _GroupNetListener extends StatelessWidget {
+  final Group group;
+  final String myUid;
+  final Map<String, Friend> friendById;
+  final ValueChanged<double> onNetChanged;
+
+  const _GroupNetListener({
+    required this.group,
+    required this.myUid,
+    required this.friendById,
+    required this.onNetChanged,
+  });
+
+  /// Same fix as GroupDetailsScreen._remainingForBill: a friend is tracked
+  /// either via `friendIds`/`remainingForFriend` (non-linked) OR via
+  /// `participantUids`/`remainingForUid` (linked) — never both.
+  double _remainingForBill(Bill bill) {
+    double total = 0;
+    for (final id in bill.friendIds) {
+      final friend = friendById[id];
+      if (friend != null && friend.isLinked) {
+        total += bill.remainingForUid(friend.linkedUid!);
+      } else {
+        total += bill.remainingForFriend(id);
+      }
+    }
+    return total;
+  }
+
+  /// Net for one bill from my point of view. Bills I created myself may
+  /// mix local (non-linked) friends with linked ones, so those go through
+  /// the friendIds-aware calculation above. Bills someone ELSE in the
+  /// group created only ever use uids, so `balanceForUid` alone is correct
+  /// and already accounts for who paid.
+  double _netForBill(Bill bill) {
+    if (bill.ownerId == myUid) {
+      if (bill.paidBy == 'me') return _remainingForBill(bill);
+      return -bill.remainingMyShare;
+    }
+    return bill.balanceForUid(myUid);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Bill>>(
+      stream: BillService.streamGroupBills(group.id),
+      builder: (context, snapshot) {
+        final bills = snapshot.data ?? [];
+        double net = 0;
+        for (final bill in bills) {
+          net += _netForBill(bill);
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          onNetChanged(net);
+        });
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Text(
+            'Loading...',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          );
+        }
+
+        final isSettled = net.abs() <= 0.009;
+        final String subtitle;
+        final Color color;
+        if (bills.isEmpty) {
+          subtitle = 'No bills yet';
+          color = AppColors.textSecondary;
+        } else if (isSettled) {
+          subtitle = 'Settled up';
+          color = AppColors.textSecondary;
+        } else if (net > 0) {
+          subtitle = 'you are owed ₹${net.toStringAsFixed(2)}';
+          color = AppColors.success;
+        } else {
+          subtitle = 'you owe ₹${(-net).toStringAsFixed(2)}';
+          color = AppColors.warning;
+        }
+
+        return Text(
+          subtitle,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         );
       },
     );

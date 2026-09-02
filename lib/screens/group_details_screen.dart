@@ -10,6 +10,10 @@ import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
+import 'package:splitpay/services/group_service.dart';
+import 'package:splitpay/services/local_notification_service.dart';
+import 'package:splitpay/widgets/day_of_month_picker.dart';
+import 'package:splitpay/core/debt_simplifier.dart';
 
 const _kMonthNames = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -109,6 +113,102 @@ class GroupDetailsScreen extends StatelessWidget {
 
   Color _iconColorFor(Color bg) => Colors.black.withOpacity(0.55);
 
+  /// Nets every bill down to one balance per group member, runs the debt
+  /// simplifier over it, and shows the resulting "X pays Y ₹Z" list — the
+  /// fewest payments needed to settle the whole group up.
+  void _showSimplifiedDebts(
+    BuildContext context,
+    List<Bill> bills,
+    List<Friend> members,
+  ) {
+    final netByUid = <String, double>{};
+    final nameByUid = <String, String>{};
+
+    for (final bill in bills) {
+      for (final uid in bill.participantUids) {
+        netByUid[uid] = (netByUid[uid] ?? 0) + bill.balanceForUid(uid);
+      }
+    }
+    for (final friend in members) {
+      if (friend.isLinked) nameByUid[friend.linkedUid!] = friend.name;
+    }
+    nameByUid[group.ownerId] = nameByUid[group.ownerId] ?? 'Owner';
+
+    final simplified = simplifyDebts(netByUid);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Simplified balances',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'The fewest payments needed to settle everyone up.',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (simplified.isEmpty)
+                Text(
+                  'Everyone is settled up 🎉',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                )
+              else
+                ...simplified.map(
+                  (d) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${nameByUid[d.fromUid] ?? 'Someone'} pays ${nameByUid[d.toUid] ?? 'someone'}',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '₹${d.amount.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -141,19 +241,31 @@ class GroupDetailsScreen extends StatelessWidget {
               _Header(group: group, members: members),
               Expanded(
                 child: StreamBuilder<List<Bill>>(
-                  stream: BillService.streamBills(),
+                  stream: BillService.streamGroupBills(group.id),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     final bills = (snapshot.data ?? [])
-                        .where((b) => b.groupId == group.id)
-                        .toList()
                       ..sort((a, b) => b.date.compareTo(a.date));
 
                     double net = 0;
                     for (final bill in bills) {
                       net += _netForBill(bill, friendById);
+                    }
+
+                    // Keep this device's monthly settle-up reminder in sync
+                    // with the group's current settle-up day and my current
+                    // balance in this group. Cheap no-op if unchanged.
+                    if (group.settleUpDay != null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        LocalNotificationService.scheduleMonthlySettleReminder(
+                          groupId: group.id,
+                          groupName: group.name,
+                          day: group.settleUpDay!,
+                          myNetBalance: net,
+                        );
+                      });
                     }
 
                     return Column(
@@ -172,6 +284,11 @@ class GroupDetailsScreen extends StatelessWidget {
                               'Open a friend from this group to settle up',
                             );
                           },
+                          onBalances: () => _showSimplifiedDebts(
+                            context,
+                            bills,
+                            members,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Expanded(
@@ -212,6 +329,41 @@ class _Header extends StatelessWidget {
   final List<Friend> members;
 
   const _Header({required this.group, required this.members});
+
+  Future<void> _editSettleUpDate(BuildContext context) async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DayOfMonthPicker(
+        initialDay: group.settleUpDay,
+        allowClear: true,
+      ),
+    );
+    if (picked == null || !context.mounted) return;
+
+    if (picked == -1) {
+      await GroupService.updateSettleUpDay(group.id, null);
+      await LocalNotificationService.cancelSettleReminder(group.id);
+      if (context.mounted) {
+        showAppToast(context, 'Settle up reminder turned off');
+      }
+      return;
+    }
+
+    await GroupService.updateSettleUpDay(group.id, picked);
+    await LocalNotificationService.scheduleMonthlySettleReminder(
+      groupId: group.id,
+      groupName: group.name,
+      day: picked,
+      myNetBalance: 0,
+    );
+    if (context.mounted) {
+      showAppToast(context, 'You\'ll be reminded every month on day $picked');
+    }
+  }
 
   void _showMembers(BuildContext context) {
     showModalBottomSheet(
@@ -333,10 +485,10 @@ class _Header extends StatelessWidget {
                   children: [
                     _HeaderPill(
                       icon: Icons.calendar_today_rounded,
-                      label: 'Add settle up date',
-                      onTap: () {
-                        showAppToast(context, 'Coming soon');
-                      },
+                      label: group.settleUpDay == null
+                          ? 'Add settle up date'
+                          : 'Settle up on day ${group.settleUpDay}',
+                      onTap: () => _editSettleUpDate(context),
                     ),
                     const SizedBox(width: 10),
                     _HeaderPill(
@@ -438,8 +590,9 @@ class _BalanceLine extends StatelessWidget {
 
 class _TabsRow extends StatelessWidget {
   final VoidCallback onSettleUp;
+  final VoidCallback onBalances;
 
-  const _TabsRow({required this.onSettleUp});
+  const _TabsRow({required this.onSettleUp, required this.onBalances});
 
   @override
   Widget build(BuildContext context) {
@@ -466,9 +619,7 @@ class _TabsRow extends StatelessWidget {
           _TabPill(
             icon: Icons.bar_chart_rounded,
             label: 'Balances',
-            onTap: () {
-              showAppToast(context, 'Coming soon');
-            },
+            onTap: onBalances,
           ),
         ],
       ),
