@@ -10,7 +10,6 @@ import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/upi_utils.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:splitpay/screens/complete_profile_screen.dart';
 import 'package:splitpay/services/onesignal_service.dart';
 import 'package:splitpay/screens/auth/widgets/auth_form.dart';
 
@@ -28,7 +27,6 @@ class _AuthScreenState extends State<AuthScreen> {
   File? _pickedProfileImage;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  late final Future<void> _googleSignInInitialization;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -39,8 +37,6 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
-
-    _googleSignInInitialization = _googleSignIn.initialize();
   }
 
   @override
@@ -152,8 +148,6 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _googleSignInInitialization;
-
       final googleUser = await _googleSignIn.authenticate();
 
       final googleAuth = googleUser.authentication;
@@ -162,35 +156,11 @@ class _AuthScreenState extends State<AuthScreen> {
         idToken: googleAuth.idToken,
       );
 
-      final userCred = await FirebaseAuth.instance.signInWithCredential(
-        credential,
-      );
+      await FirebaseAuth.instance.signInWithCredential(credential);
 
-      final userDoc = FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCred.user!.uid);
-
-      final snap = await userDoc.get();
-
+      // The root auth gate observes this sign-in and routes to either
+      // CompleteProfileScreen or MainShell after checking the profile.
       if (!mounted) return;
-
-      if (!snap.exists) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => CompleteProfileScreen(
-              uid: userCred.user!.uid,
-              name: userCred.user!.displayName ?? '',
-              email: userCred.user!.email ?? '',
-            ),
-          ),
-          (route) => false,
-        );
-      } else {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainShell()),
-          (route) => false,
-        );
-      }
     } on GoogleSignInException catch (e) {
       _showError('Google sign-in failed: ${e.description ?? e.code.name}');
     } on FirebaseAuthException catch (e) {

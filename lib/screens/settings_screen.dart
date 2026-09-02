@@ -384,7 +384,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
-            _settingsTile(
+            SettingsTile(
               icon: Icons.star_rounded,
               label: 'Rate App',
               onTap: () async {

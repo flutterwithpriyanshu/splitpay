@@ -65,7 +65,20 @@ class SplitPayApp extends StatelessWidget {
                         ConnectionState.waiting) {
                       return const SplashScreen();
                     }
-                    if (profileSnap.hasData && profileSnap.data!.exists) {
+                    final profile =
+                        profileSnap.data?.data() as Map<String, dynamic>?;
+                    final hasCompleteProfile =
+                        profileSnap.hasData &&
+                        profileSnap.data!.exists &&
+                        (profile?['fullName'] as String?)?.trim().isNotEmpty ==
+                            true &&
+                        (profile?['phoneNumber'] as String?)
+                                ?.trim()
+                                .isNotEmpty ==
+                            true &&
+                        (profile?['upiId'] as String?)?.trim().isNotEmpty ==
+                            true;
+                    if (hasCompleteProfile) {
                       return const MainShell();
                     }
                     return CompleteProfileScreen(

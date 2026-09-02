@@ -21,6 +21,13 @@ import 'package:splitpay/screens/group_details_screen.dart';
 import 'package:splitpay/screens/shared_group_details_screen.dart';
 import 'package:splitpay/screens/friends/widgets/balance_widgets.dart';
 
+class _RegisteredContact {
+  const _RegisteredContact({required this.contact, required this.phone});
+
+  final Contact contact;
+  final String phone;
+}
+
 /// Bottom-nav "Friends" screen. Holds two tabs:
 ///   - Groups: bills that involve 2+ other people, grouped by who's on them
 ///     (SplitPay has no separate "group" entity — a group here just means
@@ -188,7 +195,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                       const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: IconButton(
@@ -213,33 +220,96 @@ class _FriendsScreenState extends State<FriendsScreen>
                                 return;
                               }
 
-                              final picked = await FlutterContacts.native
-                                  .showPicker(
-                                    properties: {
-                                      ContactProperty.phone,
-                                      ContactProperty.photoFullRes,
-                                    },
-                                  );
-                              if (picked == null || picked.id == null) return;
-
-                              final fullContact = await FlutterContacts.get(
-                                picked.id!,
-                                properties: ContactProperties.all,
+                              final contacts = await FlutterContacts.getAll(
+                                properties: {
+                                  ContactProperty.phone,
+                                  ContactProperty.photoFullRes,
+                                },
                               );
-                              if (fullContact == null) return;
+                              final candidates = contacts
+                                  .map((contact) {
+                                    final phone = contact.phones.isEmpty
+                                        ? ''
+                                        : normalizePhone(
+                                            contact.phones.first.number,
+                                          );
+                                    return phone.isEmpty
+                                        ? null
+                                        : _RegisteredContact(
+                                            contact: contact,
+                                            phone: phone,
+                                          );
+                                  })
+                                  .whereType<_RegisteredContact>()
+                                  .toList();
+                              final registered = <_RegisteredContact>[];
+                              for (final candidate in candidates) {
+                                if (await FriendService.findUserByPhone(
+                                      candidate.phone,
+                                    ) !=
+                                    null) {
+                                  registered.add(candidate);
+                                }
+                              }
 
-                              final pickedName = fullContact.displayName ?? '';
-                              final pickedPhone = fullContact.phones.isNotEmpty
-                                  ? normalizePhone(
-                                      fullContact.phones.first.number,
-                                    )
-                                  : '';
-                              final pickedPhoto = fullContact.photo?.fullSize;
+                              if (!sheetContext.mounted) return;
+                              if (registered.isEmpty) {
+                                showAppToast(
+                                  sheetContext,
+                                  'No contacts with SplitPay accounts found',
+                                );
+                                return;
+                              }
 
+                              final selected =
+                                  await showModalBottomSheet<
+                                    _RegisteredContact
+                                  >(
+                                    context: sheetContext,
+                                    backgroundColor: AppColors.surface,
+                                    builder: (context) => SafeArea(
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: registered.length,
+                                        itemBuilder: (context, index) {
+                                          final candidate = registered[index];
+                                          final photo =
+                                              candidate.contact.photo?.fullSize;
+                                          return ListTile(
+                                            leading: photo == null
+                                                ? const CircleAvatar(
+                                                    child: Icon(Icons.person),
+                                                  )
+                                                : CircleAvatar(
+                                                    backgroundImage:
+                                                        MemoryImage(photo),
+                                                  ),
+                                            title: Text(
+                                              candidate.contact.displayName ??
+                                                  candidate.phone,
+                                            ),
+                                            subtitle: Text(candidate.phone),
+                                            onTap: () => Navigator.pop(
+                                              context,
+                                              candidate,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                              if (selected == null || !sheetContext.mounted) {
+                                return;
+                              }
                               setSheetState(() {
-                                nameController.text = pickedName;
-                                phoneController.text = pickedPhone;
-                                pendingContactPhoto = pickedPhoto;
+                                nameController.text =
+                                    selected.contact.displayName ?? '';
+                                phoneController.text = selected.phone;
+                                final photo = selected.contact.photo?.fullSize;
+                                pendingContactPhoto =
+                                    photo != null && photo.isNotEmpty
+                                    ? photo
+                                    : null;
                               });
                             } catch (e) {
                               if (sheetContext.mounted) {
@@ -297,6 +367,22 @@ class _FriendsScreenState extends State<FriendsScreen>
                                   showAppToast(
                                     sheetContext,
                                     "This number hasn't signed up for SplitPay — friend not added",
+                                  );
+                                }
+                                return;
+                              }
+
+                              final alreadyAdded =
+                                  await FriendService.isFriendAlreadyAdded(
+                                    phoneNumber: phone,
+                                    linkedUid: linkedUid,
+                                  );
+                              if (alreadyAdded) {
+                                setSheetState(() => isChecking = false);
+                                if (sheetContext.mounted) {
+                                  showAppToast(
+                                    sheetContext,
+                                    'Friend already added',
                                   );
                                 }
                                 return;
@@ -735,11 +821,6 @@ class _GroupsTab extends StatefulWidget {
 }
 
 class _GroupsTabState extends State<_GroupsTab> {
-  // groupId -> my net balance in that group. Filled in as each group's own
-  // bill stream reports in (see _GroupNetListener below), so the Overall
-  // line and every group card stay live-updated together.
-  final Map<String, double> _netByGroupId = {};
-
   static const _kCardColors = [
     Color(0xFFFFB37B),
     Color(0xFF7ED0A6),
@@ -760,11 +841,6 @@ class _GroupsTabState extends State<_GroupsTab> {
       return Icons.flight_takeoff_rounded;
     }
     return Icons.receipt_long_rounded;
-  }
-
-  void _reportNet(String groupId, double net) {
-    if (_netByGroupId[groupId] == net) return;
-    setState(() => _netByGroupId[groupId] = net);
   }
 
   @override
@@ -810,23 +886,11 @@ class _GroupsTabState extends State<_GroupsTab> {
                   );
                 }
 
-                // Only sum groups we actually have a reported net for yet
-                // (their individual bill streams may still be loading).
-                final overallNet = groups
-                    .where((g) => _netByGroupId.containsKey(g.id))
-                    .fold<double>(0, (sum, g) => sum + _netByGroupId[g.id]!);
-
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                  itemCount: groups.length + 1,
+                  itemCount: groups.length,
                   itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: FriendsOverallLine(net: overallNet),
-                      );
-                    }
-                    final group = groups[index - 1];
+                    final group = groups[index];
                     final color = _colorFor(group.id);
 
                     return GestureDetector(
@@ -880,8 +944,6 @@ class _GroupsTabState extends State<_GroupsTab> {
                                     group: group,
                                     myUid: myUid,
                                     friendById: friendById,
-                                    onNetChanged: (net) =>
-                                        _reportNet(group.id, net),
                                   ),
                                 ],
                               ),

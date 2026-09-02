@@ -180,7 +180,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                         const SizedBox(width: 8),
                         Container(
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: IconButton(
@@ -235,7 +235,11 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                         fullContact.phones.first.number,
                                       )
                                     : '';
-                                final pickedPhoto = fullContact.photo?.fullSize;
+                                final photo = fullContact.photo?.fullSize;
+                                final pickedPhoto =
+                                    photo != null && photo.isNotEmpty
+                                    ? photo
+                                    : null;
 
                                 setSheetState(() {
                                   _newFriendController.text = pickedName;
@@ -301,6 +305,19 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                     context,
                                     "This number hasn't signed up for SplitPay — friend not added",
                                   );
+                                }
+                                return;
+                              }
+
+                              final alreadyAdded =
+                                  await FriendService.isFriendAlreadyAdded(
+                                    phoneNumber: phone,
+                                    linkedUid: linkedUid,
+                                  );
+                              if (alreadyAdded) {
+                                setSheetState(() => isChecking = false);
+                                if (context.mounted) {
+                                  showAppToast(context, 'Friend already added');
                                 }
                                 return;
                               }
@@ -509,7 +526,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                   width: 72,
                   height: 72,
                   decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.12),
+                    color: AppColors.success.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

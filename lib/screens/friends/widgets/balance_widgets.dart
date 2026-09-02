@@ -11,14 +11,12 @@ class FriendsGroupNetListener extends StatelessWidget {
     required this.group,
     required this.myUid,
     required this.friendById,
-    required this.onNetChanged,
     super.key,
   });
 
   final Group group;
   final String myUid;
   final Map<String, Friend> friendById;
-  final ValueChanged<double> onNetChanged;
 
   double _remainingForBill(Bill bill) {
     double total = 0;
@@ -49,8 +47,6 @@ class FriendsGroupNetListener extends StatelessWidget {
           0,
           (sum, bill) => sum + _netForBill(bill),
         );
-
-        WidgetsBinding.instance.addPostFrameCallback((_) => onNetChanged(net));
 
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Text(
@@ -89,38 +85,6 @@ class FriendsGroupNetListener extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class FriendsOverallLine extends StatelessWidget {
-  const FriendsOverallLine({required this.net, super.key});
-
-  final double net;
-
-  @override
-  Widget build(BuildContext context) {
-    final isSettled = net.abs() <= 0.009;
-    final String label;
-    final Color color;
-    if (isSettled) {
-      label = 'Overall, you are settled up';
-      color = AppColors.textSecondary;
-    } else if (net > 0) {
-      label = 'Overall, you are owed ₹${net.toStringAsFixed(2)}';
-      color = AppColors.success;
-    } else {
-      label = 'Overall, you owe ₹${(-net).toStringAsFixed(2)}';
-      color = AppColors.warning;
-    }
-
-    return Text(
-      label,
-      style: GoogleFonts.inter(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: color,
-      ),
     );
   }
 }

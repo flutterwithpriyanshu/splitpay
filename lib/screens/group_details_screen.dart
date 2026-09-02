@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
@@ -625,6 +626,13 @@ class _BillRow extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
+        if (bill.ownerId != FirebaseAuth.instance.currentUser?.uid) {
+          showAppToast(
+            context,
+            'Only the person who added this bill can edit it',
+          );
+          return;
+        }
         if (bill.settledFriendIds.isNotEmpty ||
             bill.settledUids.isNotEmpty ||
             bill.partialPaymentsByFriend.isNotEmpty ||

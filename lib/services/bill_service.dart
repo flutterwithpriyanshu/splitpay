@@ -82,10 +82,11 @@ class BillService {
         .where('participantUids', arrayContains: _uid)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
-              .toList()
-            ..sort((a, b) => b.date.compareTo(a.date)),
+          (snap) =>
+              snap.docs
+                  .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
+                  .toList()
+                ..sort((a, b) => b.date.compareTo(a.date)),
         );
   }
 
@@ -93,9 +94,22 @@ class BillService {
     await _db.collection('bills').add(bill.toFirestore(_uid));
     await LocalNotificationService.billAdded(bill.title, bill.amount);
 
-    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    final myName =
+        (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    var recipientUids = bill.participantUids;
+    if (bill.groupId != null) {
+      final group = await _db.collection('groups').doc(bill.groupId).get();
+      final members = List<String>.from(
+        group.data()?['memberUids'] ?? const [],
+      );
+      recipientUids = {
+        ...recipientUids,
+        group.data()?['ownerId'] as String?,
+        ...members,
+      }.whereType<String>().toList();
+    }
     await OneSignalService.notifyUids(
-      uids: bill.participantUids,
+      uids: recipientUids,
       excludeUid: _uid,
       title: bill.groupId != null ? 'New group bill' : 'New bill added',
       body: '$myName added "${bill.title}" for ₹${bill.amount}',
@@ -103,6 +117,10 @@ class BillService {
   }
 
   static Future<void> updateBill(String billId, Bill bill) async {
+    final existing = await _db.collection('bills').doc(billId).get();
+    if (!existing.exists || existing.data()?['ownerId'] != _uid) {
+      throw StateError('Only the person who added this bill can edit it');
+    }
     await _db.collection('bills').doc(billId).update({
       'title': bill.title,
       'amount': bill.amount,
@@ -120,7 +138,8 @@ class BillService {
     });
     await LocalNotificationService.billEdited(bill.title);
 
-    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    final myName =
+        (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
     await OneSignalService.notifyUids(
       uids: bill.participantUids,
       excludeUid: _uid,
@@ -131,6 +150,9 @@ class BillService {
 
   static Future<void> deleteBill(String billId) async {
     final doc = await _db.collection('bills').doc(billId).get();
+    if (!doc.exists || doc.data()?['ownerId'] != _uid) {
+      throw StateError('Only the person who added this bill can delete it');
+    }
     final title = doc.data()?['title'] ?? 'Bill';
     final participantUids = List<String>.from(
       doc.data()?['participantUids'] ?? [],
@@ -138,7 +160,8 @@ class BillService {
     await _db.collection('bills').doc(billId).delete();
     await LocalNotificationService.billDeleted(title);
 
-    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    final myName =
+        (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
     await OneSignalService.notifyUids(
       uids: participantUids,
       excludeUid: _uid,
@@ -261,7 +284,8 @@ class BillService {
     );
 
     if (linkedUid != null) {
-      final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+      final myName =
+          (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
       await OneSignalService.notifyUids(
         uids: [linkedUid],
         excludeUid: _uid,
@@ -291,7 +315,8 @@ class BillService {
     await batch.commit();
     await LocalNotificationService.settledUp();
 
-    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    final myName =
+        (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
     await OneSignalService.notifyUids(
       uids: [otherUid],
       excludeUid: _uid,

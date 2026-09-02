@@ -34,6 +34,29 @@ class FriendService {
     return snap.docs.first.id;
   }
 
+  static Future<bool> isFriendAlreadyAdded({
+    required String phoneNumber,
+    String? linkedUid,
+  }) async {
+    final phone = normalizePhone(phoneNumber);
+    final byPhone = await _db
+        .collection('friends')
+        .where('ownerId', isEqualTo: _uid)
+        .where('phoneNumber', isEqualTo: phone)
+        .limit(1)
+        .get();
+    if (byPhone.docs.isNotEmpty) return true;
+
+    if (linkedUid == null) return false;
+    final byUid = await _db
+        .collection('friends')
+        .where('ownerId', isEqualTo: _uid)
+        .where('linkedUid', isEqualTo: linkedUid)
+        .limit(1)
+        .get();
+    return byUid.docs.isNotEmpty;
+  }
+
   /// Fetches the current signed-in user's own profile data.
   static Future<Map<String, dynamic>?> getMyProfile() async {
     final doc = await _db.collection('users').doc(_uid).get();
