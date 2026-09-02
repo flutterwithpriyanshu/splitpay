@@ -5,6 +5,7 @@ import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_toast.dart';
 
 class EditBillScreen extends StatefulWidget {
   final Bill bill;
@@ -163,9 +164,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message);
   }
 
   @override

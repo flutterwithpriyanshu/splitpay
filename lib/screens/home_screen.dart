@@ -13,6 +13,7 @@ import 'package:splitpay/screens/settings_screen.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/model/group.dart';
+import 'package:splitpay/core/app_toast.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -489,12 +490,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         bill.partialPaymentsByFriend.isNotEmpty ||
                         bill.partialPaymentsByUid.isNotEmpty ||
                         bill.myPartialPayment > 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'This bill has settled activity and can no longer be edited',
-                          ),
-                        ),
+                      showAppToast(
+                        context,
+                        'This bill has settled activity and can no longer be edited',
                       );
                     } else {
                       Navigator.of(context).push(

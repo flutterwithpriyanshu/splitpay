@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/services/local_image_service.dart';
@@ -53,9 +54,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message);
   }
 
   Future<void> _pickProfileImage() async {

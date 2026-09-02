@@ -6,6 +6,7 @@ import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
@@ -166,12 +167,9 @@ class GroupDetailsScreen extends StatelessWidget {
                         const SizedBox(height: 14),
                         _TabsRow(
                           onSettleUp: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Open a friend from this group to settle up',
-                                ),
-                              ),
+                            showAppToast(
+                              context,
+                              'Open a friend from this group to settle up',
                             );
                           },
                         ),
@@ -337,9 +335,7 @@ class _Header extends StatelessWidget {
                       icon: Icons.calendar_today_rounded,
                       label: 'Add settle up date',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Coming soon')),
-                        );
+                        showAppToast(context, 'Coming soon');
                       },
                     ),
                     const SizedBox(width: 10),
@@ -463,9 +459,7 @@ class _TabsRow extends StatelessWidget {
             icon: Icons.pie_chart_outline_rounded,
             label: 'Charts',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon')),
-              );
+              showAppToast(context, 'Coming soon');
             },
           ),
           const SizedBox(width: 10),
@@ -473,9 +467,7 @@ class _TabsRow extends StatelessWidget {
             icon: Icons.bar_chart_rounded,
             label: 'Balances',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Coming soon')),
-              );
+              showAppToast(context, 'Coming soon');
             },
           ),
         ],
@@ -622,12 +614,9 @@ class _BillRow extends StatelessWidget {
             bill.partialPaymentsByFriend.isNotEmpty ||
             bill.partialPaymentsByUid.isNotEmpty ||
             bill.myPartialPayment > 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'This bill has settled activity and can no longer be edited',
-              ),
-            ),
+          showAppToast(
+            context,
+            'This bill has settled activity and can no longer be edited',
           );
         } else {
           Navigator.of(context).push(

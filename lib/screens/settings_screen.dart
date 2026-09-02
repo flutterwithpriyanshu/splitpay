@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/core/static_content.dart';
@@ -251,6 +253,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              const SizedBox(height: 2),
+                              GestureDetector(
+                                onTap: () {
+                                  final uid =
+                                      FirebaseAuth.instance.currentUser?.uid ??
+                                          '';
+                                  Clipboard.setData(ClipboardData(text: uid));
+                                  showAppToast(context, 'UID copied: $uid');
+                                },
+                                child: Text(
+                                  'UID: ${FirebaseAuth.instance.currentUser?.uid ?? '-'}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary
+                                        .withOpacity(0.6),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -369,9 +389,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Could not open store link')),
-                  );
+                  showAppToast(context, 'Could not open store link');
                 }
               },
             ),

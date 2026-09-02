@@ -9,6 +9,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/transaction_service.dart';
 import 'package:splitpay/services/upi_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 
 enum PaymentMethod { cash, upi }
@@ -163,18 +164,13 @@ class FriendDetailsScreen extends StatelessWidget {
                     onPressed: () {
                       final val = double.tryParse(controller.text.trim());
                       if (val == null || val <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Enter a valid amount')),
-                        );
+                        showAppToast(context, 'Enter a valid amount');
                         return;
                       }
                       if (val > outstanding + 0.01) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Amount cannot exceed ₹${outstanding.toStringAsFixed(0)}',
-                            ),
-                          ),
+                        showAppToast(
+                          context,
+                          'Amount cannot exceed ₹${outstanding.toStringAsFixed(0)}',
                         );
                         return;
                       }
@@ -245,21 +241,17 @@ class FriendDetailsScreen extends StatelessWidget {
       }
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              entered >= outstanding - 0.01
-                  ? 'Settled up!'
-                  : 'Partial payment recorded',
-            ),
-          ),
+        showAppToast(
+          context,
+          entered >= outstanding - 0.01
+              ? 'Settled up!'
+              : 'Partial payment recorded',
+          isError: false,
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Settle Up failed: $e')));
+        showAppToast(context, 'Settle Up failed: $e');
       }
     }
   }
@@ -276,12 +268,9 @@ class FriendDetailsScreen extends StatelessWidget {
     final upiInfo = await _fetchFriendUpiInfo();
     if (upiInfo == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${friend.name} hasn\'t set up a UPI ID yet. Try Cash instead.',
-            ),
-          ),
+        showAppToast(
+          context,
+          '${friend.name} hasn\'t set up a UPI ID yet. Try Cash instead.',
         );
       }
       return;
@@ -295,21 +284,16 @@ class FriendDetailsScreen extends StatelessWidget {
 
     if (launchResult == UpiLaunchResult.noAppFound) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No UPI app found. Please install a UPI app or choose Cash.',
-            ),
-          ),
+        showAppToast(
+          context,
+          'No UPI app found. Please install a UPI app or choose Cash.',
         );
       }
       return;
     }
     if (launchResult == UpiLaunchResult.failed) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open UPI app.')),
-        );
+        showAppToast(context, 'Could not open UPI app.');
       }
       return;
     }
@@ -356,9 +340,7 @@ class FriendDetailsScreen extends StatelessWidget {
 
     if (confirmed != true) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Payment not recorded')));
+        showAppToast(context, 'Payment not recorded');
       }
       return;
     }

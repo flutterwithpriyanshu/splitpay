@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/core/upi_utils.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/services/onesignal_service.dart';
@@ -40,9 +41,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message);
   }
 
   Future<void> _submit() async {

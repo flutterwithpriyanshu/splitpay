@@ -483,9 +483,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppToast(context, message);
   }
 
   void _showSuccessAndReset() {

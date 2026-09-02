@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/upi_utils.dart';
+import 'package:splitpay/core/app_toast.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String initialName;
@@ -50,21 +51,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final upi = _upiController.text.trim();
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
+      showAppToast(context, 'Name cannot be empty');
       return;
     }
     if (upi.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('UPI ID cannot be empty')));
+      showAppToast(context, 'UPI ID cannot be empty');
       return;
     }
     if (!isValidUpiFormat(upi)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid UPI ID, e.g. name@bank')),
-      );
+      showAppToast(context, 'Enter a valid UPI ID, e.g. name@bank');
       return;
     }
 
@@ -81,9 +76,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true); // return true so Settings can refresh
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update: $e')));
+      showAppToast(context, 'Failed to update: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

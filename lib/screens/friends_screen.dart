@@ -450,20 +450,16 @@ class _FriendsScreenState extends State<FriendsScreen>
                           : () async {
                               final name = nameController.text.trim();
                               if (name.isEmpty) {
-                                ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Please enter a group name'),
-                                  ),
+                                showAppToast(
+                                  sheetContext,
+                                  'Please enter a group name',
                                 );
                                 return;
                               }
                               if (selectedIds.length < 2) {
-                                ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Select at least 2 friends for a group',
-                                    ),
-                                  ),
+                                showAppToast(
+                                  sheetContext,
+                                  'Select at least 2 friends for a group',
                                 );
                                 return;
                               }
@@ -485,14 +481,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                               } catch (e) {
                                 if (sheetContext.mounted) {
                                   setSheetState(() => isSaving = false);
-                                  ScaffoldMessenger.of(
+                                  showAppToast(
                                     sheetContext,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Could not create group. Try again.',
-                                      ),
-                                    ),
+                                    'Could not create group. Try again.',
                                   );
                                 }
                               }
@@ -898,19 +889,56 @@ class _GroupsTab extends StatelessWidget {
                                           ),
                                         )
                                       else
-                                        FutureBuilder<String>(
-                                          future: FriendService.getUserName(
+                                        StreamBuilder<List<Bill>>(
+                                          stream:
+                                              BillService.streamSharedBillsFrom(
                                             group.ownerId,
                                           ),
-                                          builder: (context, ownerSnap) {
-                                            final ownerName =
-                                                ownerSnap.data ?? '...';
+                                          builder: (context, sharedSnap) {
+                                            final myUid = FirebaseAuth
+                                                .instance.currentUser!.uid;
+                                            final groupSharedBills =
+                                                (sharedSnap.data ?? [])
+                                                    .where((b) =>
+                                                        b.groupId == group.id)
+                                                    .toList();
+                                            double sharedNet = 0;
+                                            for (final b
+                                                in groupSharedBills) {
+                                              sharedNet +=
+                                                  b.balanceForUid(myUid);
+                                            }
+                                            final sharedSettled =
+                                                sharedNet.abs() <= 0.009;
+
+                                            final String sharedSubtitle;
+                                            final Color sharedColor;
+                                            if (groupSharedBills.isEmpty) {
+                                              sharedSubtitle = 'No bills yet';
+                                              sharedColor =
+                                                  AppColors.textSecondary;
+                                            } else if (sharedSettled) {
+                                              sharedSubtitle = 'Settled up';
+                                              sharedColor =
+                                                  AppColors.textSecondary;
+                                            } else if (sharedNet > 0) {
+                                              sharedSubtitle =
+                                                  'you are owed ₹${sharedNet.toStringAsFixed(2)}';
+                                              sharedColor =
+                                                  AppColors.success;
+                                            } else {
+                                              sharedSubtitle =
+                                                  'you owe ₹${(-sharedNet).toStringAsFixed(2)}';
+                                              sharedColor =
+                                                  AppColors.warning;
+                                            }
+
                                             return Text(
-                                              'Shared by $ownerName',
+                                              sharedSubtitle,
                                               style: GoogleFonts.inter(
                                                 fontSize: 12,
-                                                color:
-                                                    AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                                color: sharedColor,
                                               ),
                                             );
                                           },
@@ -918,11 +946,6 @@ class _GroupsTab extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                                if (!isOwn)
-                                  Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: AppColors.textSecondary,
-                                  ),
                               ],
                             ),
                           ),
