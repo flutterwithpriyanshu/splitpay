@@ -11,6 +11,7 @@ import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/upi_utils.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:splitpay/screens/complete_profile_screen.dart';
+import 'package:splitpay/services/onesignal_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -132,6 +133,8 @@ class _AuthScreenState extends State<AuthScreen> {
             await _pickedProfileImage!.readAsBytes(),
           );
         }
+
+        await OneSignalService.saveIdForCurrentUser();
       }
 
       if (!mounted) return;

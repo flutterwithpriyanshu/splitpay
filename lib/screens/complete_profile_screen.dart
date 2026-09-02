@@ -5,6 +5,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/upi_utils.dart';
 import 'package:splitpay/screens/main_shell.dart';
+import 'package:splitpay/services/onesignal_service.dart';
 
 /// Shown once, right after a brand-new Google sign-in, because Google
 /// gives us name + email but never a phone number or UPI ID — and both
@@ -70,6 +71,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         'email': widget.email,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      await OneSignalService.saveIdForCurrentUser();
 
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
