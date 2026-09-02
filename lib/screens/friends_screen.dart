@@ -19,6 +19,7 @@ import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
 import 'package:splitpay/screens/shared_group_details_screen.dart';
+import 'package:splitpay/screens/friends/widgets/balance_widgets.dart';
 
 /// Bottom-nav "Friends" screen. Holds two tabs:
 ///   - Groups: bills that involve 2+ other people, grouped by who's on them
@@ -822,7 +823,7 @@ class _GroupsTabState extends State<_GroupsTab> {
                     if (index == 0) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: _OverallLine(net: overallNet),
+                        child: FriendsOverallLine(net: overallNet),
                       );
                     }
                     final group = groups[index - 1];
@@ -875,7 +876,7 @@ class _GroupsTabState extends State<_GroupsTab> {
                                     ),
                                   ),
                                   const SizedBox(height: 3),
-                                  _GroupNetListener(
+                                  FriendsGroupNetListener(
                                     group: group,
                                     myUid: myUid,
                                     friendById: friendById,
@@ -896,145 +897,6 @@ class _GroupsTabState extends State<_GroupsTab> {
           },
         );
       },
-    );
-  }
-}
-
-/// Streams every bill tagged to [group] that I'm part of — no matter who
-/// created it — computes my net balance from it, reports that net up to
-/// the parent (for the Overall line) via [onNetChanged], and renders the
-/// "you owe / you are owed / settled up" subtitle for this one group card.
-///
-/// This replaces the old split logic that only looked at bills the CURRENT
-/// USER personally owned (for their own groups) or only bills the GROUP
-/// OWNER personally owned (for shared groups) — which is exactly why
-/// bills added by other members weren't reflected here.
-class _GroupNetListener extends StatelessWidget {
-  final Group group;
-  final String myUid;
-  final Map<String, Friend> friendById;
-  final ValueChanged<double> onNetChanged;
-
-  const _GroupNetListener({
-    required this.group,
-    required this.myUid,
-    required this.friendById,
-    required this.onNetChanged,
-  });
-
-  /// Same fix as GroupDetailsScreen._remainingForBill: a friend is tracked
-  /// either via `friendIds`/`remainingForFriend` (non-linked) OR via
-  /// `participantUids`/`remainingForUid` (linked) — never both.
-  double _remainingForBill(Bill bill) {
-    double total = 0;
-    for (final id in bill.friendIds) {
-      final friend = friendById[id];
-      if (friend != null && friend.isLinked) {
-        total += bill.remainingForUid(friend.linkedUid!);
-      } else {
-        total += bill.remainingForFriend(id);
-      }
-    }
-    return total;
-  }
-
-  /// Net for one bill from my point of view. Bills I created myself may
-  /// mix local (non-linked) friends with linked ones, so those go through
-  /// the friendIds-aware calculation above. Bills someone ELSE in the
-  /// group created only ever use uids, so `balanceForUid` alone is correct
-  /// and already accounts for who paid.
-  double _netForBill(Bill bill) {
-    if (bill.ownerId == myUid) {
-      if (bill.paidBy == 'me') return _remainingForBill(bill);
-      return -bill.remainingMyShare;
-    }
-    return bill.balanceForUid(myUid);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<Bill>>(
-      stream: BillService.streamGroupBills(group.id),
-      builder: (context, snapshot) {
-        final bills = snapshot.data ?? [];
-        double net = 0;
-        for (final bill in bills) {
-          net += _netForBill(bill);
-        }
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          onNetChanged(net);
-        });
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Text(
-            'Loading...',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          );
-        }
-
-        final isSettled = net.abs() <= 0.009;
-        final String subtitle;
-        final Color color;
-        if (bills.isEmpty) {
-          subtitle = 'No bills yet';
-          color = AppColors.textSecondary;
-        } else if (isSettled) {
-          subtitle = 'Settled up';
-          color = AppColors.textSecondary;
-        } else if (net > 0) {
-          subtitle = 'you are owed ₹${net.toStringAsFixed(2)}';
-          color = AppColors.success;
-        } else {
-          subtitle = 'you owe ₹${(-net).toStringAsFixed(2)}';
-          color = AppColors.warning;
-        }
-
-        return Text(
-          subtitle,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _OverallLine extends StatelessWidget {
-  final double net;
-
-  const _OverallLine({required this.net});
-
-  @override
-  Widget build(BuildContext context) {
-    final isSettled = net.abs() <= 0.009;
-    final String label;
-    final Color color;
-    if (isSettled) {
-      label = 'Overall, you are settled up';
-      color = AppColors.textSecondary;
-    } else if (net > 0) {
-      label = 'Overall, you are owed ₹${net.toStringAsFixed(2)}';
-      color = AppColors.success;
-    } else {
-      label = 'Overall, you owe ₹${(-net).toStringAsFixed(2)}';
-      color = AppColors.warning;
-    }
-
-    return Text(
-      label,
-      style: GoogleFonts.inter(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: color,
-      ),
     );
   }
 }

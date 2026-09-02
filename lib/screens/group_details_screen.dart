@@ -14,14 +14,37 @@ import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/core/debt_simplifier.dart';
+import 'package:splitpay/screens/group_details/widgets/header_pill.dart';
+import 'package:splitpay/screens/group_details/widgets/balance_line.dart';
+import 'package:splitpay/screens/group_details/widgets/tabs_row.dart';
 
 const _kMonthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 const _kMonthFullNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 String _monthAbbr(DateTime d) => _kMonthNames[d.month - 1];
@@ -274,21 +297,18 @@ class GroupDetailsScreen extends StatelessWidget {
                         const SizedBox(height: 14),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _BalanceLine(net: net, members: members),
+                          child: GroupBalanceLine(net: net, members: members),
                         ),
                         const SizedBox(height: 14),
-                        _TabsRow(
+                        GroupTabsRow(
                           onSettleUp: () {
                             showAppToast(
                               context,
                               'Open a friend from this group to settle up',
                             );
                           },
-                          onBalances: () => _showSimplifiedDebts(
-                            context,
-                            bills,
-                            members,
-                          ),
+                          onBalances: () =>
+                              _showSimplifiedDebts(context, bills, members),
                         ),
                         const SizedBox(height: 8),
                         Expanded(
@@ -337,10 +357,8 @@ class _Header extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => DayOfMonthPicker(
-        initialDay: group.settleUpDay,
-        allowClear: true,
-      ),
+      builder: (context) =>
+          DayOfMonthPicker(initialDay: group.settleUpDay, allowClear: true),
     );
     if (picked == null || !context.mounted) return;
 
@@ -459,12 +477,18 @@ class _Header extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: Colors.white,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
                     onPressed: () {},
-                    icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -483,7 +507,7 @@ class _Header extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 12),
                 child: Row(
                   children: [
-                    _HeaderPill(
+                    GroupHeaderPill(
                       icon: Icons.calendar_today_rounded,
                       label: group.settleUpDay == null
                           ? 'Add settle up date'
@@ -491,7 +515,7 @@ class _Header extends StatelessWidget {
                       onTap: () => _editSettleUpDate(context),
                     ),
                     const SizedBox(width: 10),
-                    _HeaderPill(
+                    GroupHeaderPill(
                       icon: Icons.people_alt_rounded,
                       label: '${members.length} people',
                       onTap: () => _showMembers(context),
@@ -501,167 +525,6 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _HeaderPill({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.16),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: Colors.white),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BalanceLine extends StatelessWidget {
-  final double net;
-  final List<Friend> members;
-
-  const _BalanceLine({required this.net, required this.members});
-
-  @override
-  Widget build(BuildContext context) {
-    final isSettled = net.abs() <= 0.009;
-    final other = members.length == 1 ? members.first.name : null;
-
-    String text;
-    Color color;
-    if (isSettled) {
-      text = 'You are all settled up';
-      color = AppColors.textSecondary;
-    } else if (net > 0) {
-      text = other != null
-          ? '$other owes you ₹${net.toStringAsFixed(2)}'
-          : 'You are owed ₹${net.toStringAsFixed(2)}';
-      color = AppColors.success;
-    } else {
-      text = other != null
-          ? 'You owe $other ₹${(-net).toStringAsFixed(2)}'
-          : 'You owe ₹${(-net).toStringAsFixed(2)}';
-      color = AppColors.warning;
-    }
-
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: color,
-      ),
-    );
-  }
-}
-
-class _TabsRow extends StatelessWidget {
-  final VoidCallback onSettleUp;
-  final VoidCallback onBalances;
-
-  const _TabsRow({required this.onSettleUp, required this.onBalances});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        children: [
-          _TabPill(
-            icon: Icons.handshake_outlined,
-            label: 'Settle up',
-            onTap: onSettleUp,
-          ),
-          const SizedBox(width: 10),
-          _TabPill(
-            icon: Icons.pie_chart_outline_rounded,
-            label: 'Charts',
-            onTap: () {
-              showAppToast(context, 'Coming soon');
-            },
-          ),
-          const SizedBox(width: 10),
-          _TabPill(
-            icon: Icons.bar_chart_rounded,
-            label: 'Balances',
-            onTap: onBalances,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _TabPill({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: AppColors.textPrimary),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -753,7 +616,9 @@ class _BillRow extends StatelessWidget {
         : bill.remainingMyShare <= 0.009;
 
     final amount = youPaid ? remaining : bill.remainingMyShare;
-    final label = isSettled ? 'settled' : (youPaid ? 'you lent' : 'you borrowed');
+    final label = isSettled
+        ? 'settled'
+        : (youPaid ? 'you lent' : 'you borrowed');
     final amountColor = isSettled
         ? AppColors.textSecondary
         : (youPaid ? AppColors.success : AppColors.warning);
@@ -770,9 +635,9 @@ class _BillRow extends StatelessWidget {
             'This bill has settled activity and can no longer be edited',
           );
         } else {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => EditBillScreen(bill: bill)),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => EditBillScreen(bill: bill)));
         }
       },
       child: Padding(
@@ -846,10 +711,7 @@ class _BillRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: amountColor,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 11, color: amountColor),
                 ),
                 Text(
                   isSettled ? '₹0' : '₹${amount.toStringAsFixed(2)}',

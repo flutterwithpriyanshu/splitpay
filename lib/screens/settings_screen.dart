@@ -14,6 +14,7 @@ import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/widgets/manage_friends_screen.dart';
 import 'package:splitpay/services/onesignal_service.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:splitpay/screens/settings/widgets/settings_components.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -210,7 +211,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             // Profile card
             _loadingProfile
-                ? _skeletonBox(height: 90, width: double.infinity, radius: 20)
+                ? SettingsSkeletonBox(
+                    height: 90,
+                    width: double.infinity,
+                    radius: 20,
+                  )
                 : Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -258,7 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onTap: () {
                                   final uid =
                                       FirebaseAuth.instance.currentUser?.uid ??
-                                          '';
+                                      '';
                                   Clipboard.setData(ClipboardData(text: uid));
                                   showAppToast(context, 'UID copied: $uid');
                                 },
@@ -266,8 +271,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   'UID: ${FirebaseAuth.instance.currentUser?.uid ?? '-'}',
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
-                                    color: AppColors.textSecondary
-                                        .withOpacity(0.6),
+                                    color: AppColors.textSecondary.withOpacity(
+                                      0.6,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -279,8 +285,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
             const SizedBox(height: 24),
 
-            _sectionTitle('Account'),
-            _settingsTile(
+            SettingsSectionTitle('Account'),
+            SettingsTile(
               icon: Icons.person_rounded,
               label: 'Edit Profile',
               onTap: () async {
@@ -296,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (updated == true) _loadProfile(); // refresh after save
               },
             ),
-            _settingsTile(
+            SettingsTile(
               icon: Icons.people_alt_rounded,
               label: 'Manage Friends',
               onTap: () {
@@ -309,8 +315,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             const SizedBox(height: 20),
-            _sectionTitle('Preferences'),
-            _switchTile(
+            SettingsSectionTitle('Preferences'),
+            SettingsSwitchTile(
               icon: Icons.dark_mode_rounded,
               label: 'Dark Mode',
               value: _darkMode,
@@ -321,13 +327,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : ThemeMode.light;
               },
             ),
-            _settingsTile(
+            SettingsTile(
               icon: Icons.currency_exchange_rounded,
               label: 'Currency',
               trailing: _currency,
               onTap: _showCurrencyPicker,
             ),
-            _settingsTile(
+            SettingsTile(
               icon: Icons.language_rounded,
               label: 'Language',
               trailing: _language,
@@ -335,8 +341,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             const SizedBox(height: 20),
-            _sectionTitle('Support'),
-            _settingsTile(
+            SettingsSectionTitle('Support'),
+            SettingsTile(
               icon: Icons.help_center_rounded,
               label: 'Help Center',
               onTap: () {
@@ -350,7 +356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
-            _settingsTile(
+            SettingsTile(
               icon: Icons.privacy_tip_rounded,
               label: 'Privacy Policy',
               onTap: () {
@@ -364,7 +370,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
-            _settingsTile(
+            SettingsTile(
               icon: Icons.description_rounded,
               label: 'Terms & Conditions',
               onTap: () {
@@ -417,114 +423,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary,
-      ),
-    ),
-  );
-
-  Widget _settingsTile({
-    required IconData icon,
-    required String label,
-    String? trailing,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(icon, color: AppColors.primary, size: 22),
-        title: Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
-        ),
-        trailing: trailing != null
-            ? Text(
-                trailing,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              )
-            : Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    );
-  }
-
-  Widget _switchTile({
-    required IconData icon,
-    required String label,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      height: 72,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 22),
-
-          const SizedBox(width: 16),
-
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-
-          Transform.scale(
-            scale: 0.80,
-            child: Switch(
-              value: value,
-              onChanged: onChanged,
-              activeColor: Colors.white,
-              activeTrackColor: AppColors.primary,
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: Colors.grey.shade700,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _skeletonBox({
-    required double height,
-    required double width,
-    double radius = 8,
-  }) {
-    return Container(
-      height: height,
-      width: width,
-      decoration: BoxDecoration(
-        color: AppColors.textSecondary.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }

@@ -10,15 +10,37 @@ import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/debt_simplifier.dart';
-
+import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
+import 'package:splitpay/screens/shared_group_details/widgets/balance_line.dart';
+import 'package:splitpay/screens/shared_group_details/widgets/tabs_row.dart';
 
 const _kMonthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 const _kMonthFullNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 String _monthAbbr(DateTime d) => _kMonthNames[d.month - 1];
@@ -216,10 +238,10 @@ class SharedGroupDetailsScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _BalanceLine(net: net),
+                child: SharedGroupBalanceLine(net: net),
               ),
               const SizedBox(height: 14),
-              _TabsRow(
+              SharedGroupTabsRow(
                 onSettleUp: () {
                   showAppToast(
                     context,
@@ -233,16 +255,16 @@ class SharedGroupDetailsScreen extends StatelessWidget {
                 child: snapshot.connectionState == ConnectionState.waiting
                     ? const Center(child: CircularProgressIndicator())
                     : bills.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No bills in this group yet. Tap + to add one.',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          )
-                        : _SharedBillList(bills: bills, myUid: myUid),
+                    ? Center(
+                        child: Text(
+                          'No bills in this group yet. Tap + to add one.',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    : _SharedBillList(bills: bills, myUid: myUid),
               ),
             ],
           );
@@ -293,8 +315,9 @@ class _SharedHeader extends StatelessWidget {
                             children: [
                               CircleAvatar(
                                 radius: 24,
-                                backgroundColor:
-                                    AppColors.primary.withOpacity(0.1),
+                                backgroundColor: AppColors.primary.withOpacity(
+                                  0.1,
+                                ),
                                 child: Icon(
                                   Icons.person_rounded,
                                   color: AppColors.primary.withOpacity(0.4),
@@ -388,14 +411,14 @@ class _SharedHeader extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 12),
                 child: Row(
                   children: [
-                    _HeaderPill(
+                    SharedGroupHeaderPill(
                       icon: Icons.people_alt_rounded,
                       label: '${group.memberUids.length + 1} people',
                       onTap: () => _showMembers(context),
                     ),
                     if (group.settleUpDay != null) ...[
                       const SizedBox(width: 10),
-                      _HeaderPill(
+                      SharedGroupHeaderPill(
                         icon: Icons.calendar_today_rounded,
                         label: 'Settle up on day ${group.settleUpDay}',
                         onTap: () => showAppToast(
@@ -410,81 +433,6 @@ class _SharedHeader extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _HeaderPill({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.16),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: Colors.white),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BalanceLine extends StatelessWidget {
-  final double net;
-
-  const _BalanceLine({required this.net});
-
-  @override
-  Widget build(BuildContext context) {
-    final isSettled = net.abs() <= 0.009;
-
-    String text;
-    Color color;
-    if (isSettled) {
-      text = 'You are all settled up';
-      color = AppColors.textSecondary;
-    } else if (net > 0) {
-      text = 'You are owed ₹${net.toStringAsFixed(2)}';
-      color = AppColors.success;
-    } else {
-      text = 'You owe ₹${(-net).toStringAsFixed(2)}';
-      color = AppColors.warning;
-    }
-
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: color,
       ),
     );
   }

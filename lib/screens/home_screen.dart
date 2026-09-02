@@ -14,6 +14,8 @@ import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/core/app_toast.dart';
+import 'package:splitpay/screens/home/widgets/home_header.dart';
+import 'package:splitpay/screens/home/widgets/balance_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,9 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => AddBillScreen(
-                onBillSaved: () => Navigator.of(context).pop(),
-              ),
+              builder: (_) =>
+                  AddBillScreen(onBillSaved: () => Navigator.of(context).pop()),
             ),
           );
         },
@@ -88,75 +89,87 @@ class _HomeScreenState extends State<HomeScreen> {
                           for (final g in sharedGroupsForNames) g.id: g.name,
                         };
 
-                    final billsLoading = ownLoading || sharedLoading;
+                        final billsLoading = ownLoading || sharedLoading;
 
-                    double youOwe = 0;
-                    double youGet = 0;
+                        double youOwe = 0;
+                        double youGet = 0;
 
-                    for (final bill in ownBills) {
-                      if (bill.paidBy == 'me') {
-                        for (final fid in bill.friendIds) {
-                          final f = friendById[fid];
-                          final remaining = (f != null && f.isLinked)
-                              ? bill.remainingForUid(f.linkedUid!)
-                              : bill.remainingForFriend(fid);
-                          youGet += remaining;
+                        for (final bill in ownBills) {
+                          if (bill.paidBy == 'me') {
+                            for (final fid in bill.friendIds) {
+                              final f = friendById[fid];
+                              final remaining = (f != null && f.isLinked)
+                                  ? bill.remainingForUid(f.linkedUid!)
+                                  : bill.remainingForFriend(fid);
+                              youGet += remaining;
+                            }
+                          } else {
+                            youOwe += bill.remainingMyShare;
+                          }
                         }
-                      } else {
-                        youOwe += bill.remainingMyShare;
-                      }
-                    }
 
-                    for (final bill in sharedBills) {
-                      final balance = bill.balanceForUid(myUid);
-                      if (balance > 0) {
-                        youGet += balance;
-                      } else if (balance < 0) {
-                        youOwe += balance.abs();
-                      }
-                    }
+                        for (final bill in sharedBills) {
+                          final balance = bill.balanceForUid(myUid);
+                          if (balance > 0) {
+                            youGet += balance;
+                          } else if (balance < 0) {
+                            youOwe += balance.abs();
+                          }
+                        }
 
-                    final allActivity = [
-                      ...ownBills.map(
-                        (b) => _ActivityItem(bill: b, isOwn: true),
-                      ),
-                      ...sharedBills.map(
-                        (b) => _ActivityItem(bill: b, isOwn: false),
-                      ),
-                    ]..sort((a, b) => b.bill.date.compareTo(a.bill.date));
+                        final allActivity = [
+                          ...ownBills.map(
+                            (b) => _ActivityItem(bill: b, isOwn: true),
+                          ),
+                          ...sharedBills.map(
+                            (b) => _ActivityItem(bill: b, isOwn: false),
+                          ),
+                        ]..sort((a, b) => b.bill.date.compareTo(a.bill.date));
 
-                    return RefreshIndicator(
-                      color: AppColors.primary,
-                      onRefresh: () async {
-                        await Future.delayed(const Duration(milliseconds: 500));
-                      },
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                        children: [
-                          _buildHeader(userName, myUid),
-                          const SizedBox(height: 20),
-                          _buildBalanceCard(youOwe, youGet),
-                          const SizedBox(height: 24),
-                          _buildRecentFriends(friends, friendsLoading),
-                          const SizedBox(height: 24),
-                          _buildRecentActivityHeader(),
-                          const SizedBox(height: 12),
-                          if (billsLoading)
-                            _billsSkeleton()
-                          else if (allActivity.isEmpty)
-                            _buildEmptyBills()
-                          else
-                            ..._buildBillCards(
-                              allActivity,
-                              friendNameById,
-                              nameByLinkedUid,
-                              friendById,
-                              myUid,
-                              groupNameById,
-                            ),
-                        ],
-                      ),
-                    );
+                        return RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: () async {
+                            await Future.delayed(
+                              const Duration(milliseconds: 500),
+                            );
+                          },
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                            children: [
+                              HomeHeader(
+                                userName: userName,
+                                myUid: myUid,
+                                onProfileTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const SettingsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              HomeBalanceCard(youOwe: youOwe, youGet: youGet),
+                              const SizedBox(height: 24),
+                              _buildRecentFriends(friends, friendsLoading),
+                              const SizedBox(height: 24),
+                              _buildRecentActivityHeader(),
+                              const SizedBox(height: 12),
+                              if (billsLoading)
+                                _billsSkeleton()
+                              else if (allActivity.isEmpty)
+                                _buildEmptyBills()
+                              else
+                                ..._buildBillCards(
+                                  allActivity,
+                                  friendNameById,
+                                  nameByLinkedUid,
+                                  friendById,
+                                  myUid,
+                                  groupNameById,
+                                ),
+                            ],
+                          ),
+                        );
                       },
                     );
                   },
@@ -165,148 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
         ),
-      ),
-    );
-  }
-
-  // ---------- Header ----------
-  Widget _buildHeader(String userName, String myUid) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Hello, $userName 👋',
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Welcome Back',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-          },
-          child: LocalAvatar(localKey: myUid, isProfile: true, radius: 24),
-        ),
-      ],
-    );
-  }
-
-  // ---------- Balance Card ----------
-  Widget _buildBalanceCard(double youOwe, double youGet) {
-    final total = youGet - youOwe;
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.secondary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Total Balance',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.85),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${total < 0 ? '-' : ''}₹${total.abs().toStringAsFixed(0)}',
-            style: GoogleFonts.inter(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildBalanceStat(
-                  label: 'You Owe',
-                  amount: '₹${youOwe.toStringAsFixed(0)}',
-                  icon: Icons.arrow_upward_rounded,
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 36,
-                color: Colors.white.withOpacity(0.2),
-              ),
-              Expanded(
-                child: _buildBalanceStat(
-                  label: 'You Get',
-                  amount: '₹${youGet.toStringAsFixed(0)}',
-                  icon: Icons.arrow_downward_rounded,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBalanceStat({
-    required String label,
-    required String amount,
-    required IconData icon,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white.withOpacity(0.9), size: 16),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.85),
-                ),
-              ),
-              Text(
-                amount,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

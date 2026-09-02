@@ -13,6 +13,7 @@ import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
+import 'package:splitpay/screens/add_bill/widgets/form_components.dart';
 
 enum SplitMethod { equal, custom }
 
@@ -608,9 +609,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ],
             const SizedBox(height: 20),
 
-            _label('Bill Amount'),
+            AddBillLabel('Bill Amount'),
             const SizedBox(height: 8),
-            _field(
+            AddBillField(
               controller: _amountController,
               hint: '₹0.00',
               keyboardType: const TextInputType.numberWithOptions(
@@ -619,15 +620,15 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ),
             const SizedBox(height: 16),
 
-            _label('Bill Title'),
+            AddBillLabel('Bill Title'),
             const SizedBox(height: 8),
-            _field(
+            AddBillField(
               controller: _titleController,
               hint: 'e.g. Dinner at Cafe Noir',
             ),
             const SizedBox(height: 16),
 
-            _label('Date'),
+            AddBillLabel('Date'),
             const SizedBox(height: 8),
             GestureDetector(
               onTap: _pickDate,
@@ -661,7 +662,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _label('Split With'),
+                AddBillLabel('Split With'),
                 TextButton.icon(
                   onPressed: _showAddFriendSheet,
                   icon: Icon(
@@ -703,9 +704,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                     ? _liveFriends
                           .where(
                             (f) =>
-                                widget.group!.memberFriendIds.contains(
-                                  f.id,
-                                ) ||
+                                widget.group!.memberFriendIds.contains(f.id) ||
                                 _selectedFriendIds.contains(f.id),
                           )
                           .toList()
@@ -779,16 +778,26 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ),
             const SizedBox(height: 20),
 
-            _label('Split Method'),
+            AddBillLabel('Split Method'),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: _splitMethodChip('Equal Split', SplitMethod.equal),
+                  child: AddBillSplitChip(
+                    label: 'Equal Split',
+                    selected: _splitMethod == SplitMethod.equal,
+                    onTap: () =>
+                        setState(() => _splitMethod = SplitMethod.equal),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _splitMethodChip('Custom Split', SplitMethod.custom),
+                  child: AddBillSplitChip(
+                    label: 'Custom Split',
+                    selected: _splitMethod == SplitMethod.custom,
+                    onTap: () =>
+                        setState(() => _splitMethod = SplitMethod.custom),
+                  ),
                 ),
               ],
             ),
@@ -811,7 +820,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                       ),
                       Expanded(
                         flex: 3,
-                        child: _field(
+                        child: AddBillField(
                           controller: _customAmountControllers[id]!,
                           hint: '₹0.00',
                           keyboardType: const TextInputType.numberWithOptions(
@@ -827,14 +836,19 @@ class _AddBillScreenState extends State<AddBillScreen> {
             ],
             const SizedBox(height: 20),
 
-            _label('Paid By'),
+            AddBillLabel('Paid By'),
             const SizedBox(height: 8),
-            _paidByDropdown(),
+            AddBillPaidByDropdown(
+              value: _paidByFriendId,
+              friends: _liveFriends,
+              selectedFriendIds: _selectedFriendIds,
+              onChanged: (value) => setState(() => _paidByFriendId = value),
+            ),
             const SizedBox(height: 20),
 
-            _label('Note (optional)'),
+            AddBillLabel('Note (optional)'),
             const SizedBox(height: 8),
-            _field(controller: _noteController, hint: 'Add a note...'),
+            AddBillField(controller: _noteController, hint: 'Add a note...'),
             const SizedBox(height: 28),
 
             SizedBox(
@@ -867,98 +881,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _splitMethodChip(String label, SplitMethod method) {
-    final selected = _splitMethod == method;
-    return GestureDetector(
-      onTap: () => setState(() => _splitMethod = method),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : AppColors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _paidByDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: _paidByFriendId,
-          isExpanded: true,
-          hint: Text('You', style: GoogleFonts.inter(fontSize: 14)),
-          items: [
-            DropdownMenuItem<String?>(
-              value: null,
-              child: Text('You', style: GoogleFonts.inter(fontSize: 14)),
-            ),
-            ..._liveFriends
-                .where((f) => _selectedFriendIds.contains(f.id))
-                .map(
-                  (f) => DropdownMenuItem<String?>(
-                    value: f.id,
-                    child: Text(f.name, style: GoogleFonts.inter(fontSize: 14)),
-                  ),
-                ),
-          ],
-          onChanged: (val) => setState(() => _paidByFriendId = val),
-        ),
-      ),
-    );
-  }
-
-  Widget _label(String text) => Text(
-    text,
-    style: GoogleFonts.inter(
-      fontSize: 13,
-      fontWeight: FontWeight.w600,
-      color: AppColors.textSecondary,
-    ),
-  );
-
-  Widget _field({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType keyboardType = TextInputType.text,
-    bool dense = false,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: GoogleFonts.inter(fontSize: 14),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(color: AppColors.textSecondary),
-        filled: true,
-        fillColor: AppColors.surface,
-        isDense: dense,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: dense ? 12 : 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
         ),
       ),
     );
