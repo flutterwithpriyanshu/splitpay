@@ -98,8 +98,10 @@ class _FriendsScreenState extends State<FriendsScreen>
                 dividerColor: Colors.transparent,
                 labelColor: Colors.white,
                 unselectedLabelColor: AppColors.textSecondary,
-                labelStyle:
-                    GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                labelStyle: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
                 tabs: const [
                   Tab(text: 'Groups'),
                   Tab(text: 'Friends'),
@@ -109,10 +111,7 @@ class _FriendsScreenState extends State<FriendsScreen>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: const [
-                  _GroupsTab(),
-                  _FriendsTab(),
-                ],
+                children: const [_GroupsTab(), _FriendsTab()],
               ),
             ),
           ],
@@ -151,7 +150,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                   Text(
                     'Add Friend',
                     style: GoogleFonts.inter(
-                        fontSize: 17, fontWeight: FontWeight.w700),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (pendingContactPhoto != null) ...[
@@ -174,8 +175,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                         child: TextField(
                           controller: phoneController,
                           keyboardType: TextInputType.phone,
-                          decoration:
-                              const InputDecoration(hintText: 'Phone number'),
+                          decoration: const InputDecoration(
+                            hintText: 'Phone number',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -208,11 +210,11 @@ class _FriendsScreenState extends State<FriendsScreen>
 
                               final picked = await FlutterContacts.native
                                   .showPicker(
-                                properties: {
-                                  ContactProperty.phone,
-                                  ContactProperty.photoFullRes,
-                                },
-                              );
+                                    properties: {
+                                      ContactProperty.phone,
+                                      ContactProperty.photoFullRes,
+                                    },
+                                  );
                               if (picked == null || picked.id == null) return;
 
                               final fullContact = await FlutterContacts.get(
@@ -224,7 +226,8 @@ class _FriendsScreenState extends State<FriendsScreen>
                               final pickedName = fullContact.displayName ?? '';
                               final pickedPhone = fullContact.phones.isNotEmpty
                                   ? normalizePhone(
-                                      fullContact.phones.first.number)
+                                      fullContact.phones.first.number,
+                                    )
                                   : '';
                               final pickedPhoto = fullContact.photo?.fullSize;
 
@@ -254,7 +257,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                   Text(
                     'Only phone numbers registered on SplitPay can be added as friends.',
                     style: GoogleFonts.inter(
-                        fontSize: 11, color: AppColors.textSecondary),
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
@@ -264,8 +269,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                           ? null
                           : () async {
                               final name = nameController.text.trim();
-                              final phone =
-                                  normalizePhone(phoneController.text.trim());
+                              final phone = normalizePhone(
+                                phoneController.text.trim(),
+                              );
 
                               if (name.isEmpty || phone.isEmpty) {
                                 showAppToast(
@@ -310,19 +316,25 @@ class _FriendsScreenState extends State<FriendsScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       child: isChecking
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5),
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
                             )
-                          : Text('Add',
+                          : Text(
+                              'Add',
                               style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -363,19 +375,22 @@ class _FriendsScreenState extends State<FriendsScreen>
                   Text(
                     'Create Group',
                     style: GoogleFonts.inter(
-                        fontSize: 17, fontWeight: FontWeight.w700),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: nameController,
-                    decoration:
-                        const InputDecoration(hintText: 'Group name'),
+                    decoration: const InputDecoration(hintText: 'Group name'),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'Add members',
                     style: GoogleFonts.inter(
-                        fontSize: 13, fontWeight: FontWeight.w600),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   ConstrainedBox(
@@ -388,8 +403,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                           return Text(
                             'Add a friend first from the Friends tab.',
                             style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: AppColors.textSecondary),
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           );
                         }
                         return ListView.builder(
@@ -397,8 +413,7 @@ class _FriendsScreenState extends State<FriendsScreen>
                           itemCount: friends.length,
                           itemBuilder: (context, index) {
                             final friend = friends[index];
-                            final isSelected =
-                                selectedIds.contains(friend.id);
+                            final isSelected = selectedIds.contains(friend.id);
                             return CheckboxListTile(
                               value: isSelected,
                               onChanged: (checked) {
@@ -431,18 +446,15 @@ class _FriendsScreenState extends State<FriendsScreen>
                           : () async {
                               final name = nameController.text.trim();
                               if (name.isEmpty) {
-                                ScaffoldMessenger.of(sheetContext)
-                                    .showSnackBar(
+                                ScaffoldMessenger.of(sheetContext).showSnackBar(
                                   const SnackBar(
-                                    content:
-                                        Text('Please enter a group name'),
+                                    content: Text('Please enter a group name'),
                                   ),
                                 );
                                 return;
                               }
                               if (selectedIds.length < 2) {
-                                ScaffoldMessenger.of(sheetContext)
-                                    .showSnackBar(
+                                ScaffoldMessenger.of(sheetContext).showSnackBar(
                                   const SnackBar(
                                     content: Text(
                                       'Select at least 2 friends for a group',
@@ -464,19 +476,25 @@ class _FriendsScreenState extends State<FriendsScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       child: isSaving
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5),
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
                             )
-                          : Text('Create',
+                          : Text(
+                              'Create',
                               style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -529,7 +547,9 @@ class _FriendsTab extends StatelessWidget {
             child: Text(
               'No friends added yet',
               style: GoogleFonts.inter(
-                  fontSize: 13, color: AppColors.textSecondary),
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
           );
         }
@@ -611,8 +631,10 @@ class _FriendsTab extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Icon(Icons.chevron_right_rounded,
-                            color: AppColors.textSecondary),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),
@@ -626,12 +648,30 @@ class _FriendsTab extends StatelessWidget {
   }
 }
 
-
 /// Groups tab — real, persisted groups (see Group model / GroupService).
 /// Create a group with 2+ friends, then add bills straight into it from
 /// its details screen; those bills auto-split across the group's members.
 class _GroupsTab extends StatelessWidget {
   const _GroupsTab();
+
+  /// Same fix as GroupDetailsScreen._remainingForBill: a friend is tracked
+  /// either via `friendIds`/`remainingForFriend` (non-linked) OR via
+  /// `participantUids`/`remainingForUid` (linked) — never both. The old
+  /// code summed both lists unconditionally, double-counting every linked
+  /// friend's share (participantUids also always includes your own uid,
+  /// so your own share leaked into the group's "due" total too).
+  double _remainingForBill(Bill bill, Map<String, Friend> friendById) {
+    double total = 0;
+    for (final id in bill.friendIds) {
+      final friend = friendById[id];
+      if (friend != null && friend.isLinked) {
+        total += bill.remainingForUid(friend.linkedUid!);
+      } else {
+        total += bill.remainingForFriend(id);
+      }
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -640,6 +680,7 @@ class _GroupsTab extends StatelessWidget {
       builder: (context, friendSnapshot) {
         final friends = friendSnapshot.data ?? [];
         final nameById = {for (final f in friends) f.id: f.name};
+        final friendById = {for (final f in friends) f.id: f};
 
         return StreamBuilder<List<Group>>(
           stream: GroupService.streamGroups(),
@@ -657,7 +698,9 @@ class _GroupsTab extends StatelessWidget {
                     'No groups yet. Tap the group icon above to create one.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
-                        fontSize: 13, color: AppColors.textSecondary),
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               );
@@ -677,17 +720,13 @@ class _GroupsTab extends StatelessWidget {
                         .map((id) => nameById[id] ?? 'Unknown')
                         .join(', ');
 
-                    final groupBills =
-                        allBills.where((b) => b.groupId == group.id).toList();
+                    final groupBills = allBills
+                        .where((b) => b.groupId == group.id)
+                        .toList();
 
                     double totalOutstanding = 0;
                     for (final bill in groupBills) {
-                      for (final id in bill.friendIds) {
-                        totalOutstanding += bill.remainingForFriend(id);
-                      }
-                      for (final uid in bill.participantUids) {
-                        totalOutstanding += bill.remainingForUid(uid);
-                      }
+                      totalOutstanding += _remainingForBill(bill, friendById);
                     }
 
                     return GestureDetector(
@@ -706,10 +745,14 @@ class _GroupsTab extends StatelessWidget {
                         child: Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor:
-                                  AppColors.primary.withOpacity(0.15),
-                              child: Icon(Icons.groups_rounded,
-                                  color: AppColors.primary, size: 20),
+                              backgroundColor: AppColors.primary.withOpacity(
+                                0.15,
+                              ),
+                              child: Icon(
+                                Icons.groups_rounded,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -749,12 +792,12 @@ class _GroupsTab extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  totalOutstanding == 0
+                                  totalOutstanding <= 0.009
                                       ? 'Settled up'
                                       : '₹${totalOutstanding.toStringAsFixed(0)} due',
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
-                                    color: totalOutstanding == 0
+                                    color: totalOutstanding <= 0.009
                                         ? AppColors.textSecondary
                                         : AppColors.error,
                                   ),

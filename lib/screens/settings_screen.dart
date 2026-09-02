@@ -10,6 +10,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/edit_profile_screen.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/widgets/manage_friends_screen.dart';
+import 'package:splitpay/services/onesignal_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -94,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true) {
+      await OneSignalService.clearId();
       await FirebaseAuth.instance.signOut();
       if (mounted) {
         // The auth flow doesn't rely on the root StreamBuilder after the

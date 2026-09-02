@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/onboarding_prefs.dart';
 import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 
@@ -83,7 +84,9 @@ class IntroScreen extends StatelessWidget {
                         width: 56,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            await OnboardingPrefs.setSeenIntro();
+                            if (!context.mounted) return;
                             Navigator.of(context).pushReplacement(
                               MaterialPageRoute(
                                 builder: (_) => const AuthScreen(),

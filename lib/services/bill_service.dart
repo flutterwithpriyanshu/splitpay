@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/services/local_notification_service.dart';
+import 'package:splitpay/services/onesignal_service.dart';
+import 'package:splitpay/services/friend_service.dart';
 
 class BillService {
   static final _db = FirebaseFirestore.instance;
@@ -68,6 +70,14 @@ class BillService {
   static Future<void> addBill(Bill bill) async {
     await _db.collection('bills').add(bill.toFirestore(_uid));
     await LocalNotificationService.billAdded(bill.title, bill.amount);
+
+    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    await OneSignalService.notifyUids(
+      uids: bill.participantUids,
+      excludeUid: _uid,
+      title: bill.groupId != null ? 'New group bill' : 'New bill added',
+      body: '$myName added "${bill.title}" for ₹${bill.amount}',
+    );
   }
 
   static Future<void> updateBill(String billId, Bill bill) async {
@@ -87,13 +97,32 @@ class BillService {
       // settledFriendIds and settledUids intentionally NOT touched here.
     });
     await LocalNotificationService.billEdited(bill.title);
+
+    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    await OneSignalService.notifyUids(
+      uids: bill.participantUids,
+      excludeUid: _uid,
+      title: 'Bill updated',
+      body: '$myName updated "${bill.title}"',
+    );
   }
 
   static Future<void> deleteBill(String billId) async {
     final doc = await _db.collection('bills').doc(billId).get();
     final title = doc.data()?['title'] ?? 'Bill';
+    final participantUids = List<String>.from(
+      doc.data()?['participantUids'] ?? [],
+    );
     await _db.collection('bills').doc(billId).delete();
     await LocalNotificationService.billDeleted(title);
+
+    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    await OneSignalService.notifyUids(
+      uids: participantUids,
+      excludeUid: _uid,
+      title: 'Bill deleted',
+      body: '$myName deleted "$title"',
+    );
   }
 
   /// Applies a custom payment amount toward your balance with [friendId],
@@ -208,6 +237,16 @@ class BillService {
       friendName: friendName,
       amount: amount,
     );
+
+    if (linkedUid != null) {
+      final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+      await OneSignalService.notifyUids(
+        uids: [linkedUid],
+        excludeUid: _uid,
+        title: 'Settled up',
+        body: '$myName settled ₹$amount with you',
+      );
+    }
   }
 
   /// Marks YOUR OWN participation as settled on every bill created by
@@ -229,5 +268,13 @@ class BillService {
     }
     await batch.commit();
     await LocalNotificationService.settledUp();
+
+    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'Someone';
+    await OneSignalService.notifyUids(
+      uids: [otherUid],
+      excludeUid: _uid,
+      title: 'Settled up',
+      body: '$myName settled their share with you',
+    );
   }
 }

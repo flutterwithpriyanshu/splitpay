@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/onboarding_prefs.dart';
 import 'package:splitpay/screens/intro_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 
@@ -21,9 +22,18 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _navigateNext() async {
     await Future.delayed(const Duration(milliseconds: 2000));
     if (!mounted) return;
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const IntroScreen()));
+
+    final seenIntro = await OnboardingPrefs.hasSeenIntro();
+    if (!mounted) return;
+
+    if (!seenIntro) {
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const IntroScreen()));
+    }
+    // If they've already seen the intro, do nothing here — main.dart's
+    // authStateChanges StreamBuilder will already have swapped this splash
+    // out for AuthScreen or MainShell depending on sign-in state.
   }
 
   @override
