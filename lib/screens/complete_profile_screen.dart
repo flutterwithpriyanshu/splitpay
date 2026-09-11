@@ -4,14 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:splitpay/services/fcm_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/core/upi_utils.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/services/local_image_service.dart';
-
+import 'package:splitpay/services/fcm_service.dart';
 
 /// Shown once, right after a brand-new Google sign-in, because Google
 /// gives us name + email but never a phone number or UPI ID — and both

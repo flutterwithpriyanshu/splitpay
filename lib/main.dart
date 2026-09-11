@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:splitpay/firebase/firebase_options.dart';
-import 'package:splitpay/services/fcm_service.dart';
 import 'package:splitpay/theme/theme.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
 
@@ -13,6 +12,7 @@ import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/screens/complete_profile_screen.dart';
 import 'package:splitpay/services/local_notification_service.dart';
+import 'package:splitpay/services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

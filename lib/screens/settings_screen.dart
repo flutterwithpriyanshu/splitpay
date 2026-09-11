@@ -5,7 +5,6 @@ import 'package:splitpay/core/app_toast.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/core/static_content.dart';
-import 'package:splitpay/services/fcm_service.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
 import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/static_content_screen.dart';
@@ -13,7 +12,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/edit_profile_screen.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/widgets/manage_friends_screen.dart';
-
+import 'package:splitpay/services/fcm_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:splitpay/screens/settings/widgets/settings_components.dart';
 
