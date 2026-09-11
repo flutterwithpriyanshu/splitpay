@@ -4,13 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:splitpay/services/fcm_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/upi_utils.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:splitpay/services/onesignal_service.dart';
 import 'package:splitpay/screens/auth/widgets/auth_form.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -129,7 +129,7 @@ class _AuthScreenState extends State<AuthScreen> {
           );
         }
 
-        await OneSignalService.saveIdForCurrentUser();
+        await FcmService.saveTokenForCurrentUser();
       }
 
       if (!mounted) return;

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/services/local_notification_service.dart';
-import 'package:splitpay/services/onesignal_service.dart';
+
 import 'package:splitpay/services/friend_service.dart';
 
 class BillService {
