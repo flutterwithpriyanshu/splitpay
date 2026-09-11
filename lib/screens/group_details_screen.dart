@@ -540,6 +540,7 @@ class _BillRow extends StatelessWidget {
     final amountColor = isSettled
         ? AppColors.textSecondary
         : (youPaid ? AppColors.success : AppColors.warning);
+    final canManage = bill.ownerId == FirebaseAuth.instance.currentUser?.uid;
 
     return GestureDetector(
       onTap: () {
@@ -631,21 +632,87 @@ class _BillRow extends StatelessWidget {
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  label,
-                  style: GoogleFonts.inter(fontSize: 11, color: amountColor),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: amountColor,
+                      ),
+                    ),
+                    Text(
+                      isSettled ? '₹0' : '₹${amount.toStringAsFixed(2)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: amountColor,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  isSettled ? '₹0' : '₹${amount.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: amountColor,
+                if (canManage)
+                  PopupMenuButton<String>(
+                    onSelected: (action) async {
+                      if (action == 'edit') {
+                        if (bill.settledFriendIds.isNotEmpty ||
+                            bill.settledUids.isNotEmpty ||
+                            bill.partialPaymentsByFriend.isNotEmpty ||
+                            bill.partialPaymentsByUid.isNotEmpty ||
+                            bill.myPartialPayment > 0) {
+                          showAppToast(
+                            context,
+                            'This bill has settled activity and can no longer be edited',
+                          );
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => EditBillScreen(bill: bill),
+                            ),
+                          );
+                        }
+                      } else {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text('Delete bill?'),
+                            content: const Text(
+                              'This bill will be removed for everyone in the group.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true && context.mounted) {
+                          try {
+                            await BillService.deleteBill(bill.id);
+                          } catch (error) {
+                            if (context.mounted) {
+                              showAppToast(context, error.toString());
+                            }
+                          }
+                        }
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
                   ),
-                ),
               ],
             ),
           ],

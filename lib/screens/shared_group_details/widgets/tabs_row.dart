@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/theme/app_colors.dart';
 
 class SharedGroupTabsRow extends StatelessWidget {
@@ -25,12 +24,6 @@ class SharedGroupTabsRow extends StatelessWidget {
             icon: Icons.handshake_outlined,
             label: 'Settle up',
             onTap: onSettleUp,
-          ),
-          const SizedBox(width: 10),
-          _TabPill(
-            icon: Icons.pie_chart_outline_rounded,
-            label: 'Charts',
-            onTap: () => showAppToast(context, 'Coming soon'),
           ),
           const SizedBox(width: 10),
           _TabPill(
