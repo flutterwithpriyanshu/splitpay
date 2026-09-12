@@ -8,7 +8,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/core/upi_utils.dart';
-import 'package:splitpay/screens/main_shell.dart';
+import 'package:splitpay/core/profile_prefs.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/services/fcm_service.dart';
 
@@ -26,11 +26,17 @@ class CompleteProfileScreen extends StatefulWidget {
   /// the user signed in with Google — in that case we still ask for phone.
   final String? phone;
 
+  /// Called after profile is saved. Root app flips its own state to move
+  /// to MainShell — this screen never navigates the app Navigator itself,
+  /// so the root auth StreamBuilder stays alive.
+  final VoidCallback onDone;
+
   const CompleteProfileScreen({
     super.key,
     required this.uid,
     required this.name,
     required this.email,
+    required this.onDone,
     this.phone,
   });
 
@@ -119,11 +125,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
       await FcmService.saveTokenForCurrentUser();
 
+      await ProfilePrefs.setProfileComplete(widget.uid);
+
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-        (route) => false,
-      );
+      widget.onDone();
     } catch (e) {
       _showError('Something went wrong. Try again.');
     } finally {

@@ -203,15 +203,19 @@ class _FriendsScreenState extends State<FriendsScreen>
                         ),
                         child: IconButton(
                           onPressed: () async {
+                            debugPrint('[contacts] icon tapped');
                             try {
+                              debugPrint('[contacts] requesting permission');
                               // read only — readWrite also asks for
                               // WRITE_CONTACTS and can come back denied
                               // even after the user taps Allow.
                               var status = await FlutterContacts.permissions
                                   .request(PermissionType.read);
+                              debugPrint('[contacts] status1: $status');
                               if (status != PermissionStatus.granted) {
                                 status = await FlutterContacts.permissions
                                     .request(PermissionType.read);
+                                debugPrint('[contacts] status2: $status');
                               }
                               if (status != PermissionStatus.granted) {
                                 if (sheetContext.mounted) {

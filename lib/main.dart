@@ -13,6 +13,7 @@ import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/screens/complete_profile_screen.dart';
 import 'package:splitpay/core/onboarding_prefs.dart';
+import 'package:splitpay/core/profile_prefs.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/services/fcm_service.dart';
 
@@ -38,6 +39,7 @@ class SplitPayApp extends StatefulWidget {
 class _SplitPayAppState extends State<SplitPayApp> {
   bool _booting = true;
   bool _seenIntro = false;
+  final Set<String> _justCompletedProfileUids = {};
 
   @override
   void initState() {
@@ -65,6 +67,10 @@ class _SplitPayAppState extends State<SplitPayApp> {
     setState(() => _seenIntro = true);
   }
 
+  void _onProfileDone(String uid) {
+    setState(() => _justCompletedProfileUids.add(uid));
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
@@ -90,45 +96,69 @@ class _SplitPayAppState extends State<SplitPayApp> {
                     }
                     if (snapshot.hasData) {
                       final user = snapshot.data!;
-                      // authStateChanges fires the moment sign-in succeeds —
-                      // before we know whether a users/{uid} doc exists yet.
-                      // Check it here too, or brand-new users race straight
-                      // past complete-profile into MainShell with nothing saved.
-                      return FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user.uid)
-                            .get(),
-                        builder: (context, profileSnap) {
-                          if (profileSnap.connectionState ==
+                      if (_justCompletedProfileUids.contains(user.uid)) {
+                        return const MainShell();
+                      }
+                      // Local cache first — instant, no Firestore round
+                      // trip, so a returning user never flickers through
+                      // complete-profile again after their first launch.
+                      return FutureBuilder<bool>(
+                        future: ProfilePrefs.isProfileComplete(user.uid),
+                        builder: (context, cachedSnap) {
+                          if (cachedSnap.connectionState ==
                               ConnectionState.waiting) {
                             return const SplashScreen();
                           }
-                          final profile =
-                              profileSnap.data?.data() as Map<String, dynamic>?;
-                          final hasCompleteProfile =
-                              profileSnap.hasData &&
-                              profileSnap.data!.exists &&
-                              (profile?['fullName'] as String?)
-                                      ?.trim()
-                                      .isNotEmpty ==
-                                  true &&
-                              (profile?['phoneNumber'] as String?)
-                                      ?.trim()
-                                      .isNotEmpty ==
-                                  true &&
-                              (profile?['upiId'] as String?)
-                                      ?.trim()
-                                      .isNotEmpty ==
-                                  true;
-                          if (hasCompleteProfile) {
+                          if (cachedSnap.data == true) {
                             return const MainShell();
                           }
-                          return CompleteProfileScreen(
-                            uid: user.uid,
-                            name: user.displayName ?? '',
-                            email: user.email ?? '',
-                            phone: user.phoneNumber,
+                          // authStateChanges fires the moment sign-in succeeds —
+                          // before we know whether a users/{uid} doc exists yet.
+                          // Check it here too, or brand-new users race straight
+                          // past complete-profile into MainShell with nothing saved.
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .get(),
+                            builder: (context, profileSnap) {
+                              if (profileSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const SplashScreen();
+                              }
+                              final profile =
+                                  profileSnap.data?.data()
+                                      as Map<String, dynamic>?;
+                              final hasCompleteProfile =
+                                  profileSnap.hasData &&
+                                  profileSnap.data!.exists &&
+                                  (profile?['fullName'] as String?)
+                                          ?.trim()
+                                          .isNotEmpty ==
+                                      true &&
+                                  (profile?['phoneNumber'] as String?)
+                                          ?.trim()
+                                          .isNotEmpty ==
+                                      true &&
+                                  (profile?['upiId'] as String?)
+                                          ?.trim()
+                                          .isNotEmpty ==
+                                      true;
+                              if (hasCompleteProfile) {
+                                // Older accounts that completed their
+                                // profile before this local cache existed
+                                // — backfill it so next launch is instant.
+                                ProfilePrefs.setProfileComplete(user.uid);
+                                return const MainShell();
+                              }
+                              return CompleteProfileScreen(
+                                uid: user.uid,
+                                name: user.displayName ?? '',
+                                email: user.email ?? '',
+                                phone: user.phoneNumber,
+                                onDone: () => _onProfileDone(user.uid),
+                              );
+                            },
                           );
                         },
                       );
