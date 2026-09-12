@@ -34,6 +34,14 @@ class FriendService {
     return snap.docs.first.id;
   }
 
+  /// True if [phoneNumber] belongs to the currently signed-in user —
+  /// used to block adding yourself as your own friend.
+  static Future<bool> isOwnPhone(String phoneNumber) async {
+    final myProfile = await getMyProfile();
+    final myPhone = normalizePhone(myProfile?['phoneNumber'] ?? '');
+    return myPhone.isNotEmpty && myPhone == normalizePhone(phoneNumber);
+  }
+
   static Future<bool> isFriendAlreadyAdded({
     required String phoneNumber,
     String? linkedUid,

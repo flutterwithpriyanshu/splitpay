@@ -298,6 +298,17 @@ class _AddBillScreenState extends State<AddBillScreen> {
 
                               setSheetState(() => isChecking = true);
 
+                              if (await FriendService.isOwnPhone(phone)) {
+                                setSheetState(() => isChecking = false);
+                                if (context.mounted) {
+                                  showAppToast(
+                                    context,
+                                    "That's your own number — you can't add yourself as a friend",
+                                  );
+                                }
+                                return;
+                              }
+
                               final linkedUid =
                                   await FriendService.findUserByPhone(phone);
 
@@ -778,16 +789,6 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                     : AppColors.textPrimary,
                               ),
                             ),
-                            if (friend.isLinked) ...[
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.verified_rounded,
-                                size: 14,
-                                color: selected
-                                    ? Colors.white
-                                    : AppColors.primary,
-                              ),
-                            ],
                           ],
                         ),
                       ),

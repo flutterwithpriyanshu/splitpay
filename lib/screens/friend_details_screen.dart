@@ -462,27 +462,6 @@ class FriendDetailsScreen extends StatelessWidget {
                                   color: AppColors.textPrimary,
                                 ),
                               ),
-                              if (friend.isLinked) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.verified_rounded,
-                                      size: 14,
-                                      color: AppColors.primary,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'SplitPay user',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
                             ],
                           ),
                           const SizedBox(height: 20),

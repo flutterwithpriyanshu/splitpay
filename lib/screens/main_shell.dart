@@ -3,6 +3,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/screens/home_screen.dart';
 import 'package:splitpay/screens/wallet_screen.dart';
 import 'package:splitpay/screens/friends_screen.dart';
+import 'package:splitpay/screens/groups_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -19,6 +20,7 @@ class _MainShellState extends State<MainShell> {
     final screens = [
       const HomeScreen(),
       const FriendsScreen(),
+      const GroupsScreen(),
       const WalletScreen(),
     ];
 
@@ -46,7 +48,8 @@ class _MainShellState extends State<MainShell> {
               children: [
                 _buildNavItem(index: 0, icon: Icons.home_rounded, label: 'Home'),
                 _buildNavItem(index: 1, icon: Icons.people_alt_rounded, label: 'Friends'),
-                _buildNavItem(index: 2, icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
+                _buildNavItem(index: 2, icon: Icons.groups_rounded, label: 'Groups'),
+                _buildNavItem(index: 3, icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
               ],
             ),
           ),
