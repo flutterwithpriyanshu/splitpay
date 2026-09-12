@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/onboarding_prefs.dart';
-import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 
 class IntroScreen extends StatelessWidget {
-  const IntroScreen({super.key});
+  final VoidCallback onDone;
+
+  const IntroScreen({super.key, required this.onDone});
 
   @override
   Widget build(BuildContext context) {
@@ -86,12 +87,7 @@ class IntroScreen extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: () async {
                             await OnboardingPrefs.setSeenIntro();
-                            if (!context.mounted) return;
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => const AuthScreen(),
-                              ),
-                            );
+                            onDone();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,

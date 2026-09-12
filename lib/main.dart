@@ -8,9 +8,11 @@ import 'package:splitpay/theme/theme.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
 
 import 'package:splitpay/screens/splash_screen.dart';
+import 'package:splitpay/screens/intro_screen.dart';
 import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/screens/complete_profile_screen.dart';
+import 'package:splitpay/core/onboarding_prefs.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/services/fcm_service.dart';
 
@@ -26,8 +28,42 @@ void main() async {
   runApp(const SplitPayApp());
 }
 
-class SplitPayApp extends StatelessWidget {
+class SplitPayApp extends StatefulWidget {
   const SplitPayApp({super.key});
+
+  @override
+  State<SplitPayApp> createState() => _SplitPayAppState();
+}
+
+class _SplitPayAppState extends State<SplitPayApp> {
+  bool _booting = true;
+  bool _seenIntro = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _boot();
+  }
+
+  Future<void> _boot() async {
+    // Keep the splash on screen for a beat while we check whether the
+    // intro has ever been shown on this device. This is a plain state
+    // flag now (not a Navigator push) so it can never swallow the
+    // auth-state StreamBuilder below.
+    final results = await Future.wait([
+      OnboardingPrefs.hasSeenIntro(),
+      Future.delayed(const Duration(milliseconds: 2000)),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _seenIntro = results[0] as bool;
+      _booting = false;
+    });
+  }
+
+  void _onIntroDone() {
+    setState(() => _seenIntro = true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,60 +76,68 @@ class SplitPayApp extends StatelessWidget {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: mode,
-          home: StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              // Only show the animated splash on cold start, while
-              // Firebase is still checking for a cached session.
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SplashScreen();
-              }
-              if (snapshot.hasData) {
-                final user = snapshot.data!;
-                // authStateChanges fires the moment sign-in succeeds —
-                // before we know whether a users/{uid} doc exists yet.
-                // Check it here too, or brand-new users race straight
-                // past complete-profile into MainShell with nothing saved.
-                return FutureBuilder<DocumentSnapshot>(
-                  future: FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user.uid)
-                      .get(),
-                  builder: (context, profileSnap) {
-                    if (profileSnap.connectionState ==
-                        ConnectionState.waiting) {
+          home: _booting
+              ? const SplashScreen()
+              : !_seenIntro
+              ? IntroScreen(onDone: _onIntroDone)
+              : StreamBuilder<User?>(
+                  stream: FirebaseAuth.instance.authStateChanges(),
+                  builder: (context, snapshot) {
+                    // Only show the animated splash while Firebase is
+                    // still checking for a cached session.
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return const SplashScreen();
                     }
-                    final profile =
-                        profileSnap.data?.data() as Map<String, dynamic>?;
-                    final hasCompleteProfile =
-                        profileSnap.hasData &&
-                        profileSnap.data!.exists &&
-                        (profile?['fullName'] as String?)?.trim().isNotEmpty ==
-                            true &&
-                        (profile?['phoneNumber'] as String?)
-                                ?.trim()
-                                .isNotEmpty ==
-                            true &&
-                        (profile?['upiId'] as String?)?.trim().isNotEmpty ==
-                            true;
-                    if (hasCompleteProfile) {
-                      return const MainShell();
+                    if (snapshot.hasData) {
+                      final user = snapshot.data!;
+                      // authStateChanges fires the moment sign-in succeeds —
+                      // before we know whether a users/{uid} doc exists yet.
+                      // Check it here too, or brand-new users race straight
+                      // past complete-profile into MainShell with nothing saved.
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.uid)
+                            .get(),
+                        builder: (context, profileSnap) {
+                          if (profileSnap.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SplashScreen();
+                          }
+                          final profile =
+                              profileSnap.data?.data() as Map<String, dynamic>?;
+                          final hasCompleteProfile =
+                              profileSnap.hasData &&
+                              profileSnap.data!.exists &&
+                              (profile?['fullName'] as String?)
+                                      ?.trim()
+                                      .isNotEmpty ==
+                                  true &&
+                              (profile?['phoneNumber'] as String?)
+                                      ?.trim()
+                                      .isNotEmpty ==
+                                  true &&
+                              (profile?['upiId'] as String?)
+                                      ?.trim()
+                                      .isNotEmpty ==
+                                  true;
+                          if (hasCompleteProfile) {
+                            return const MainShell();
+                          }
+                          return CompleteProfileScreen(
+                            uid: user.uid,
+                            name: user.displayName ?? '',
+                            email: user.email ?? '',
+                            phone: user.phoneNumber,
+                          );
+                        },
+                      );
                     }
-                    return CompleteProfileScreen(
-                      uid: user.uid,
-                      name: user.displayName ?? '',
-                      email: user.email ?? '',
-                      phone: user.phoneNumber,
-                    );
+                    // Signed out (including right after logout) — go
+                    // straight to sign-in.
+                    return const AuthScreen();
                   },
-                );
-              }
-              // Signed out (including right after logout) — go straight
-              // to sign-in, not back through Splash → Intro.
-              return const AuthScreen();
-            },
-          ),
+                ),
         );
       },
     );
