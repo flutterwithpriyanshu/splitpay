@@ -21,13 +21,6 @@ import 'package:splitpay/screens/group_details_screen.dart';
 import 'package:splitpay/screens/shared_group_details_screen.dart';
 import 'package:splitpay/screens/friends/widgets/balance_widgets.dart';
 
-class _RegisteredContact {
-  const _RegisteredContact({required this.contact, required this.phone});
-
-  final Contact contact;
-  final String phone;
-}
-
 /// Bottom-nav "Friends" screen. Holds two tabs:
 ///   - Groups: bills that involve 2+ other people, grouped by who's on them
 ///     (SplitPay has no separate "group" entity — a group here just means
@@ -203,19 +196,20 @@ class _FriendsScreenState extends State<FriendsScreen>
                         ),
                         child: IconButton(
                           onPressed: () async {
-                            debugPrint('[contacts] icon tapped');
                             try {
-                              debugPrint('[contacts] requesting permission');
-                              // read only — readWrite also asks for
-                              // WRITE_CONTACTS and can come back denied
-                              // even after the user taps Allow.
+                              // Only reading a contact here — request
+                              // read, not readWrite. readWrite also asks
+                              // for WRITE_CONTACTS, and on some devices
+                              // that half of the combined prompt gets
+                              // denied even after the user taps Allow.
                               var status = await FlutterContacts.permissions
                                   .request(PermissionType.read);
-                              debugPrint('[contacts] status1: $status');
                               if (status != PermissionStatus.granted) {
+                                // Ask once more directly — some OEM
+                                // dialogs report the first check as
+                                // denied right after the user taps Allow.
                                 status = await FlutterContacts.permissions
                                     .request(PermissionType.read);
-                                debugPrint('[contacts] status2: $status');
                               }
                               if (status != PermissionStatus.granted) {
                                 if (sheetContext.mounted) {
@@ -227,96 +221,38 @@ class _FriendsScreenState extends State<FriendsScreen>
                                 return;
                               }
 
-                              final contacts = await FlutterContacts.getAll(
-                                properties: {
-                                  ContactProperty.phone,
-                                  ContactProperty.photoFullRes,
-                                },
+                              final picked = await FlutterContacts.native
+                                  .showPicker(
+                                    properties: {
+                                      ContactProperty.phone,
+                                      ContactProperty.photoFullRes,
+                                    },
+                                  );
+                              if (picked == null || picked.id == null) return;
+
+                              final fullContact = await FlutterContacts.get(
+                                picked.id!,
+                                properties: ContactProperties.all,
                               );
-                              final candidates = contacts
-                                  .map((contact) {
-                                    final phone = contact.phones.isEmpty
-                                        ? ''
-                                        : normalizePhone(
-                                            contact.phones.first.number,
-                                          );
-                                    return phone.isEmpty
-                                        ? null
-                                        : _RegisteredContact(
-                                            contact: contact,
-                                            phone: phone,
-                                          );
-                                  })
-                                  .whereType<_RegisteredContact>()
-                                  .toList();
-                              final registered = <_RegisteredContact>[];
-                              for (final candidate in candidates) {
-                                if (await FriendService.findUserByPhone(
-                                      candidate.phone,
-                                    ) !=
-                                    null) {
-                                  registered.add(candidate);
-                                }
-                              }
+                              if (fullContact == null) return;
+
+                              final pickedName = fullContact.displayName ?? '';
+                              final pickedPhone = fullContact.phones.isNotEmpty
+                                  ? normalizePhone(
+                                      fullContact.phones.first.number,
+                                    )
+                                  : '';
+                              final photo = fullContact.photo?.fullSize;
+                              final pickedPhoto =
+                                  photo != null && photo.isNotEmpty
+                                  ? photo
+                                  : null;
 
                               if (!sheetContext.mounted) return;
-                              if (registered.isEmpty) {
-                                showAppToast(
-                                  sheetContext,
-                                  'No contacts with SplitPay accounts found',
-                                );
-                                return;
-                              }
-
-                              final selected =
-                                  await showModalBottomSheet<
-                                    _RegisteredContact
-                                  >(
-                                    context: sheetContext,
-                                    backgroundColor: AppColors.surface,
-                                    builder: (context) => SafeArea(
-                                      child: ListView.builder(
-                                        shrinkWrap: true,
-                                        itemCount: registered.length,
-                                        itemBuilder: (context, index) {
-                                          final candidate = registered[index];
-                                          final photo =
-                                              candidate.contact.photo?.fullSize;
-                                          return ListTile(
-                                            leading: photo == null
-                                                ? const CircleAvatar(
-                                                    child: Icon(Icons.person),
-                                                  )
-                                                : CircleAvatar(
-                                                    backgroundImage:
-                                                        MemoryImage(photo),
-                                                  ),
-                                            title: Text(
-                                              candidate.contact.displayName ??
-                                                  candidate.phone,
-                                            ),
-                                            subtitle: Text(candidate.phone),
-                                            onTap: () => Navigator.pop(
-                                              context,
-                                              candidate,
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  );
-                              if (selected == null || !sheetContext.mounted) {
-                                return;
-                              }
                               setSheetState(() {
-                                nameController.text =
-                                    selected.contact.displayName ?? '';
-                                phoneController.text = selected.phone;
-                                final photo = selected.contact.photo?.fullSize;
-                                pendingContactPhoto =
-                                    photo != null && photo.isNotEmpty
-                                    ? photo
-                                    : null;
+                                nameController.text = pickedName;
+                                phoneController.text = pickedPhone;
+                                pendingContactPhoto = pickedPhoto;
                               });
                             } catch (e) {
                               if (sheetContext.mounted) {

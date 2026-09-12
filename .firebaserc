@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "splitpay-58d73"
-  }
+    "default": "splitpay-58d73",
+    " ": "splitpay-58d73"
+  },
+  "targets": {},
+  "etags": {}
 }
