@@ -55,15 +55,20 @@ class ManageFriendsScreen extends StatelessWidget {
 
   /// Balance with a specific friend across all bills.
   /// Positive = friend owes you. Negative = you owe friend.
-  double _balanceForFriend(List<Bill> bills, String friendId) {
+  double _balanceForFriend(List<Bill> bills, Friend friend) {
     double balance = 0;
     for (final bill in bills) {
-      if (bill.isSettledFor(friendId)) continue;
-      if (!bill.friendIds.contains(friendId)) continue;
-      if (bill.paidBy == 'me') {
-        balance += bill.shareForFriend(friendId);
-      } else if (bill.paidBy == friendId) {
-        balance -= bill.myShare;
+      if (friend.isLinked) {
+        if (!bill.isParticipant(friend.linkedUid!)) continue;
+        balance += bill.balanceForUid(friend.linkedUid!);
+      } else {
+        if (bill.isSettledFor(friend.id)) continue;
+        if (!bill.friendIds.contains(friend.id)) continue;
+        if (bill.paidBy == 'me') {
+          balance += bill.shareForFriend(friend.id);
+        } else if (bill.paidBy == friend.id) {
+          balance -= bill.myShare;
+        }
       }
     }
     return balance;
@@ -128,7 +133,7 @@ class ManageFriendsScreen extends StatelessWidget {
                         itemCount: friends.length,
                         itemBuilder: (context, index) {
                           final friend = friends[index];
-                          final balance = _balanceForFriend(bills, friend.id);
+                          final balance = _balanceForFriend(bills, friend);
 
                           String balanceText;
                           Color balanceColor;

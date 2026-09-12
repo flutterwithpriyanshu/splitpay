@@ -129,6 +129,39 @@ class _EditBillScreenState extends State<EditBillScreen> {
 
     setState(() => _isSaving = true);
 
+    final myUid = widget.bill.ownerId;
+
+    final linkedFriends = _selectedFriendIds
+        .map(
+          (id) => _liveFriends.firstWhere(
+            (f) => f.id == id,
+            orElse: () => Friend(id: id, name: '', avatarUrl: ''),
+          ),
+        )
+        .where((f) => f.isLinked)
+        .toList();
+
+    final participantUids = <String>[
+      myUid,
+      ...linkedFriends.map((f) => f.linkedUid!),
+    ];
+
+    final sharesByUid = <String, double>{myUid: myShare};
+    for (final friend in linkedFriends) {
+      sharesByUid[friend.linkedUid!] = _splitMethod == 'custom'
+          ? (customAmounts[friend.id] ?? 0)
+          : amount / (_selectedFriendIds.length + 1);
+    }
+
+    String? paidByUid;
+    if (_paidByFriendId != null) {
+      final payer = _liveFriends.firstWhere(
+        (f) => f.id == _paidByFriendId,
+        orElse: () => Friend(id: '', name: '', avatarUrl: ''),
+      );
+      if (payer.isLinked) paidByUid = payer.linkedUid;
+    }
+
     final updatedBill = Bill(
       id: widget.bill.id,
       title: title,
@@ -144,9 +177,9 @@ class _EditBillScreenState extends State<EditBillScreen> {
       partialPaymentsByFriend: widget.bill.partialPaymentsByFriend,
       myPartialPayment: widget.bill.myPartialPayment,
       ownerId: widget.bill.ownerId,
-      participantUids: widget.bill.participantUids,
-      sharesByUid: widget.bill.sharesByUid,
-      paidByUid: widget.bill.paidByUid,
+      participantUids: participantUids,
+      sharesByUid: sharesByUid,
+      paidByUid: paidByUid,
       settledUids: widget.bill.settledUids,
       partialPaymentsByUid: widget.bill.partialPaymentsByUid,
     );

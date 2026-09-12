@@ -1,261 +1,154 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:splitpay/model/bill.dart';
+"use strict";
 
-class BillService {
-  static final _db = FirebaseFirestore.instance;
+const admin = require("firebase-admin");
+const functions = require("firebase-functions");
 
-  static String get _uid => FirebaseAuth.instance.currentUser!.uid;
+admin.initializeApp();
 
-  static Stream<List<Bill>> streamBills() {
-    return _db
-        .collection('bills')
-        .where('ownerId', isEqualTo: _uid)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
-              .toList(),
-        );
+const uniqueValues = (values = []) => [
+  ...new Set((values || []).filter(Boolean)),
+];
+
+const getRecipients = async (uids = []) => {
+  const members = uniqueValues(uids);
+  if (!members.length) {
+    return [];
   }
 
-  static Stream<List<Bill>> streamBillsForFriend(String friendId) {
-    return _db
-        .collection('bills')
-        .where('ownerId', isEqualTo: _uid)
-        .where('friendIds', arrayContains: friendId)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
-              .toList(),
-        );
-  }
+  const tokens = [];
+  for (let index = 0; index < members.length; index += 10) {
+    const chunk = members.slice(index, index + 10);
+    const snapshot = await admin
+      .firestore()
+      .collection("users")
+      .where(admin.firestore.FieldPath.documentId(), "in", chunk)
+      .get();
 
-  /// Bills where you're a linked participant, but someone ELSE created them.
-  static Stream<List<Bill>> streamSharedBills() {
-    return _db
-        .collection('bills')
-        .where('participantUids', arrayContains: _uid)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
-              .where((bill) => bill.ownerId != _uid)
-              .toList(),
-        );
-  }
-
-  /// Bills created by [otherUid] that include you as a participant.
-  static Stream<List<Bill>> streamSharedBillsFrom(String otherUid) {
-    return _db
-        .collection('bills')
-        .where('ownerId', isEqualTo: otherUid)
-        .where('participantUids', arrayContains: _uid)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
-              .toList(),
-        );
-  }
-
-  /// All bills tagged with [groupId] that involve you — no matter who in
-  /// the group actually created the bill. Works because a bill's creator
-  /// is always included in their own `participantUids`, so "tagged with
-  /// this group AND I'm a participant" catches every group bill I'm part
-  /// of, whether I'm the group owner or just a member who added it.
-  ///
-  /// This is what lets ANY member add a bill to the group (not just the
-  /// owner) and have it show up for everyone in the group.
-  static Stream<List<Bill>> streamGroupBills(String groupId) {
-    return _db
-        .collection('bills')
-        .where('groupId', isEqualTo: groupId)
-        .where('participantUids', arrayContains: _uid)
-        .snapshots()
-        .map(
-          (snap) =>
-              snap.docs
-                  .map((doc) => Bill.fromFirestore(doc.id, doc.data()))
-                  .toList()
-                ..sort((a, b) => b.date.compareTo(a.date)),
-        );
-  }
-
-  /// Push notifications for add/edit/delete/settle are handled entirely
-  /// server-side — a Cloud Functions trigger on `bills/{billId}` (create,
-  /// update, delete) reads `participantUids` off the doc and sends FCM to
-  /// every one of them (owner + friend + every group member), using each
-  /// user's `fcmToken` saved by FcmService. Nothing to call from here.
-  static Future<void> addBill(Bill bill) async {
-    await _db.collection('bills').add(bill.toFirestore(_uid));
-  }
-
-  static Future<void> updateBill(String billId, Bill bill) async {
-    final existing = await _db.collection('bills').doc(billId).get();
-    if (!existing.exists || existing.data()?['ownerId'] != _uid) {
-      throw StateError('Only the person who added this bill can edit it');
-    }
-    await _db.collection('bills').doc(billId).update({
-      'title': bill.title,
-      'amount': bill.amount,
-      'date': bill.date,
-      'friendIds': bill.friendIds,
-      'splitMethod': bill.splitMethod,
-      'customAmounts': bill.customAmounts,
-      'myShare': bill.myShare,
-      'paidBy': bill.paidBy,
-      'note': bill.note,
-      'participantUids': bill.participantUids,
-      'sharesByUid': bill.sharesByUid,
-      'paidByUid': bill.paidByUid,
-      // settledFriendIds and settledUids intentionally NOT touched here.
+    snapshot.forEach((doc) => {
+      const token = doc.get("fcmToken");
+      if (token) {
+        tokens.push(token);
+      }
     });
   }
 
-  static Future<void> deleteBill(String billId) async {
-    final doc = await _db.collection('bills').doc(billId).get();
-    if (!doc.exists || doc.data()?['ownerId'] != _uid) {
-      throw StateError('Only the person who added this bill can delete it');
-    }
-    await _db.collection('bills').doc(billId).delete();
+  return uniqueValues(tokens);
+};
+
+const sendNotifications = async (uids, title, body, data = {}) => {
+  const recipients = await getRecipients(uids);
+  if (!recipients.length) {
+    return null;
   }
 
-  /// Applies a custom payment amount toward your balance with [friendId],
-  /// spreading it across their oldest unpaid bills first (both bills you
-  /// created, and — if linked — bills they created that include you).
-  static Future<void> settlePartialForFriend({
-    required String friendId,
-    String? linkedUid,
-    required bool youOwe,
-    required double amount,
-  }) async {
-    double remainingToApply = amount;
-    final batch = _db.batch();
+  const payload = {
+    notification: {
+      title,
+      body,
+    },
+    data: Object.fromEntries(
+      Object.entries(data).map(([key, value]) => [key, String(value)]),
+    ),
+  };
 
-    // ----- Bills YOU created -----
-    final ownSnap = await _db
-        .collection('bills')
-        .where('ownerId', isEqualTo: _uid)
-        .where('friendIds', arrayContains: friendId)
-        .orderBy('date')
-        .get();
+  return admin.messaging().sendEachForMulticast({
+    tokens: recipients,
+    ...payload,
+  });
+};
 
-    for (final doc in ownSnap.docs) {
-      if (remainingToApply <= 0.009) break;
-      final bill = Bill.fromFirestore(doc.id, doc.data());
+const toParticipantList = (data = {}) => {
+  const values = [];
+  const lists = [
+    data.participantUids,
+    data.friendIds,
+    data.groupMemberUids,
+    data.memberUids,
+    data.ownerId ? [data.ownerId] : [],
+  ];
 
-      if (youOwe) {
-        if (bill.paidBy != friendId) {
-          continue; // only bills where this friend paid
-        }
-        final owed = bill.remainingMyShare;
-        if (owed <= 0.009) continue;
-        final pay = owed < remainingToApply ? owed : remainingToApply;
-        final newPaid = bill.myPartialPayment + pay;
-        remainingToApply -= pay;
-
-        final update = <String, dynamic>{'myPartialPayment': newPaid};
-        if (bill.myShare - newPaid <= 0.009) {
-          final settledFriendIds = List<String>.from(bill.settledFriendIds);
-          if (!settledFriendIds.contains(friendId)) {
-            settledFriendIds.add(friendId);
-          }
-          update['settledFriendIds'] = settledFriendIds;
-          if (linkedUid != null) {
-            final settledUids = List<String>.from(bill.settledUids);
-            if (!settledUids.contains(linkedUid)) settledUids.add(linkedUid);
-            update['settledUids'] = settledUids;
-          }
-        }
-        batch.update(doc.reference, update);
-      } else {
-        if (bill.paidBy != 'me') continue; // only bills where you paid
-        final owed = bill.remainingForFriend(friendId);
-        if (owed <= 0.009) continue;
-        final pay = owed < remainingToApply ? owed : remainingToApply;
-        final paymentsMap = Map<String, double>.from(
-          bill.partialPaymentsByFriend,
-        );
-        paymentsMap[friendId] = (paymentsMap[friendId] ?? 0) + pay;
-        remainingToApply -= pay;
-
-        final update = <String, dynamic>{
-          'partialPaymentsByFriend': paymentsMap,
-        };
-        if (bill.shareForFriend(friendId) - paymentsMap[friendId]! <= 0.009) {
-          final settledFriendIds = List<String>.from(bill.settledFriendIds);
-          if (!settledFriendIds.contains(friendId)) {
-            settledFriendIds.add(friendId);
-          }
-          update['settledFriendIds'] = settledFriendIds;
-          if (linkedUid != null) {
-            final settledUids = List<String>.from(bill.settledUids);
-            if (!settledUids.contains(linkedUid)) settledUids.add(linkedUid);
-            update['settledUids'] = settledUids;
-          }
-        }
-        batch.update(doc.reference, update);
-      }
+  for (const list of lists) {
+    if (Array.isArray(list)) {
+      values.push(...list);
     }
-
-    // ----- Bills THEY created that include you (linked friends only) -----
-    if (linkedUid != null && remainingToApply > 0.009) {
-      final sharedSnap = await _db
-          .collection('bills')
-          .where('ownerId', isEqualTo: linkedUid)
-          .where('participantUids', arrayContains: _uid)
-          .orderBy('date')
-          .get();
-
-      for (final doc in sharedSnap.docs) {
-        if (remainingToApply <= 0.009) break;
-        final bill = Bill.fromFirestore(doc.id, doc.data());
-        final owed = bill.remainingForUid(_uid);
-        if (owed <= 0.009) continue;
-        final pay = owed < remainingToApply ? owed : remainingToApply;
-        final paymentsMap = Map<String, double>.from(bill.partialPaymentsByUid);
-        paymentsMap[_uid] = (paymentsMap[_uid] ?? 0) + pay;
-        remainingToApply -= pay;
-
-        final update = <String, dynamic>{'partialPaymentsByUid': paymentsMap};
-        if ((bill.sharesByUid[_uid] ?? 0) - paymentsMap[_uid]! <= 0.009) {
-          final settledUids = List<String>.from(bill.settledUids);
-          if (!settledUids.contains(_uid)) settledUids.add(_uid);
-          update['settledUids'] = settledUids;
-        }
-        batch.update(doc.reference, update);
-      }
-    }
-
-    await batch.commit();
-    // Settlement doc writes above trigger the same bills/{billId} Cloud
-    // Function used for add/edit/delete, so FCM for settlement goes out
-    // from there too — no separate call needed here.
   }
 
-  /// Marks YOUR OWN participation as settled on every bill created by
-  /// [otherUid] that includes you. Only touches your own settledUids entry.
-  static Future<void> settleSharedBillsFrom(String otherUid) async {
-    final snap = await _db
-        .collection('bills')
-        .where('ownerId', isEqualTo: otherUid)
-        .where('participantUids', arrayContains: _uid)
-        .get();
+  return uniqueValues(values);
+};
 
-    final batch = _db.batch();
-    for (final doc in snap.docs) {
-      final settled = List<String>.from(doc.data()['settledUids'] ?? []);
-      if (!settled.contains(_uid)) {
-        settled.add(_uid);
-        batch.update(doc.reference, {'settledUids': settled});
-      }
+exports.onBillWrite = functions.firestore
+  .document("bills/{billId}")
+  .onWrite(async (change, context) => {
+    const before = change.before.exists ? change.before.data() : null;
+    const after = change.after.exists ? change.after.data() : null;
+
+    if (!before && !after) {
+      return null;
     }
-    await batch.commit();
+
+    const payloadData = after || before || {};
+    const triggerType =
+      before && after ? "updated" : after ? "created" : "deleted";
+    const participants = toParticipantList(payloadData);
+
+    if (!participants.length) {
+      return null;
+    }
+
+    const title = "Bill update";
+    const body =
+      triggerType === "deleted"
+        ? "A bill was removed."
+        : triggerType === "updated"
+          ? "A bill was updated."
+          : "A new bill was added.";
+
+    return sendNotifications(participants, title, body, {
+      billId: context.params.billId,
+      type: triggerType,
+    });
+  });
+
+exports.onBillDelete = functions.firestore
+  .document("bills/{billId}")
+  .onDelete(async (snapshot, context) => {
+    const data = snapshot.data() || {};
+    const participants = toParticipantList(data);
+
+    if (!participants.length) {
+      return null;
+    }
+
+    return sendNotifications(
+      participants,
+      "Bill removed",
+      "A bill was deleted.",
+      {
+        billId: context.params.billId,
+        type: "deleted",
+      },
+    );
+  });
+
+exports.sendBillNotification = functions.https.onCall(async (data) => {
+  const {
+    participants = [],
+    title = "Bill update",
+    body = "There is a bill update.",
+    billId = "",
+    type = "updated",
+  } = data || {};
+
+  if (!Array.isArray(participants) || participants.length === 0) {
+    return { sent: 0 };
   }
-}
+
+  const result = await sendNotifications(participants, title, body, {
+    billId,
+    type,
+  });
+
+  return {
+    sent: result?.successCount ?? 0,
+  };
+});

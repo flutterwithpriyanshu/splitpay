@@ -84,6 +84,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
       if (_selectedFriendIds.contains(id)) {
         _selectedFriendIds.remove(id);
         _customAmountControllers.remove(id)?.dispose();
+        if (_paidByFriendId == id) {
+          _paidByFriendId = null;
+        }
       } else {
         _selectedFriendIds.add(id);
         _customAmountControllers[id] = TextEditingController();

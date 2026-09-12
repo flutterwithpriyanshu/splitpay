@@ -396,6 +396,9 @@ class _FriendsScreenState extends State<FriendsScreen>
                                 phoneNumber: phone,
                               );
 
+                              // Save contact photo locally — this was
+                              // missing before, so a picked contact's
+                              // photo never showed up on the saved friend.
                               if (pendingContactPhoto != null) {
                                 await LocalImageService.saveFriendImage(
                                   newFriend.id,

@@ -173,7 +173,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     keyboardType: TextInputType.phone,
                     style: GoogleFonts.inter(fontSize: 15),
                     decoration: InputDecoration(
-                      hintText: '98765 43210',
+                      hintText: 'xxxxx xxxxx',
                       prefixText: '+91 ',
                       filled: true,
                       fillColor: AppColors.background,

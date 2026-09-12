@@ -6,7 +6,7 @@ import 'package:splitpay/theme/app_colors.dart';
 /// Shows a local image if one exists for [localKey] (profile or friend id).
 /// If [isProfile] is true, checks profile storage; otherwise friend storage.
 /// If nothing is found and [fallbackUrl] is null, shows a blank circle.
-class LocalAvatar extends StatelessWidget {
+class LocalAvatar extends StatefulWidget {
   final String localKey;
   final bool isProfile;
   final String? fallbackUrl;
@@ -20,16 +20,40 @@ class LocalAvatar extends StatelessWidget {
     this.radius = 24,
   });
 
+  @override
+  State<LocalAvatar> createState() => _LocalAvatarState();
+}
+
+class _LocalAvatarState extends State<LocalAvatar> {
+  late Future<File?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  @override
+  void didUpdateWidget(LocalAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.localKey != widget.localKey ||
+        oldWidget.isProfile != widget.isProfile) {
+      _future = _load();
+    }
+  }
+
   Future<File?> _load() {
-    return isProfile
-        ? LocalImageService.getProfileImage(localKey)
-        : LocalImageService.getFriendImage(localKey);
+    return widget.isProfile
+        ? LocalImageService.getProfileImage(widget.localKey)
+        : LocalImageService.getFriendImage(widget.localKey);
   }
 
   @override
   Widget build(BuildContext context) {
+    final radius = widget.radius;
+    final fallbackUrl = widget.fallbackUrl;
     return FutureBuilder<File?>(
-      future: _load(),
+      future: _future,
       builder: (context, snapshot) {
         final file = snapshot.data;
         if (file != null) {
