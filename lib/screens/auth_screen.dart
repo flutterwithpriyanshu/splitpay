@@ -1,17 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:splitpay/core/app_toast.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:splitpay/theme/app_colors.dart';
-import 'package:splitpay/services/local_image_service.dart';
-import 'package:splitpay/screens/main_shell.dart';
-import 'package:splitpay/core/phone_utils.dart';
-import 'package:splitpay/core/upi_utils.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:splitpay/services/fcm_service.dart';
-import 'package:splitpay/screens/auth/widgets/auth_form.dart';
+import 'package:splitpay/core/app_toast.dart';
+import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/theme/app_colors.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -21,124 +14,82 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  bool isLogin = true;
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  File? _pickedProfileImage;
-
+  final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _upiController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-  }
+  bool _isLoading = false;
+  bool _codeSent = false;
+  String? _verificationId;
+  int? _resendToken;
 
   @override
   void dispose() {
-    _nameController.dispose();
     _phoneController.dispose();
-    _upiController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  void _showError(String message) {
-    showAppToast(context, message);
-  }
+  void _showError(String message) => showAppToast(context, message);
 
-  Future<void> _pickProfileImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 512,
-    );
-    if (picked != null) {
-      setState(() => _pickedProfileImage = File(picked.path));
-    }
-  }
-
-  Future<void> _submit() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Please enter email and password');
+  Future<void> _sendOtp() async {
+    final phone = normalizePhone(_phoneController.text.trim());
+    if (phone.length != 10) {
+      _showError('Enter a valid 10-digit phone number');
       return;
     }
-
-    if (!isLogin) {
-      if (_nameController.text.trim().isEmpty) {
-        _showError('Please enter your full name');
-        return;
-      }
-      if (_phoneController.text.trim().isEmpty) {
-        _showError('Please enter your phone number');
-        return;
-      }
-      final upi = _upiController.text.trim();
-      if (upi.isEmpty) {
-        _showError('Please enter your UPI ID');
-        return;
-      }
-      if (!isValidUpiFormat(upi)) {
-        _showError('Enter a valid UPI ID, e.g. name@bank');
-        return;
-      }
-      if (password.length < 6) {
-        _showError('Password must be at least 6 characters');
-        return;
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: '+91$phone',
+        forceResendingToken: _resendToken,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await FirebaseAuth.instance.signInWithCredential(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            _showError(e.message ?? 'Verification failed');
+          }
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _codeSent = true;
+              _verificationId = verificationId;
+              _resendToken = resendToken;
+            });
+          }
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showError('Could not send OTP: $e');
       }
     }
+  }
 
+  Future<void> _verifyOtp() async {
+    final code = _otpController.text.trim();
+    if (code.isEmpty || _verificationId == null) {
+      _showError('Enter the OTP sent to your phone');
+      return;
+    }
     setState(() => _isLoading = true);
-
     try {
-      if (isLogin) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      } else {
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(credential.user!.uid)
-            .set({
-              'fullName': _nameController.text.trim(),
-              'phoneNumber': normalizePhone(_phoneController.text.trim()),
-              'upiId': _upiController.text.trim(),
-              'email': email,
-              'createdAt': FieldValue.serverTimestamp(),
-            });
-
-        // Save the profile photo locally, if the user picked one.
-        if (_pickedProfileImage != null) {
-          await LocalImageService.saveProfileImage(
-            credential.user!.uid,
-            await _pickedProfileImage!.readAsBytes(),
-          );
-        }
-
-        await FcmService.saveTokenForCurrentUser();
-      }
-
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-        (route) => false,
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: code,
       );
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      // main.dart's root StreamBuilder routes to CompleteProfileScreen or MainShell.
     } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? 'Something went wrong');
+      _showError(e.message ?? 'Invalid OTP');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -146,20 +97,13 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
-
     try {
       final googleUser = await _googleSignIn.authenticate();
-
       final googleAuth = googleUser.authentication;
-
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
       );
-
       await FirebaseAuth.instance.signInWithCredential(credential);
-
-      // The root auth gate observes this sign-in and routes to either
-      // CompleteProfileScreen or MainShell after checking the profile.
       if (!mounted) return;
     } on GoogleSignInException catch (e) {
       _showError('Google sign-in failed: ${e.description ?? e.code.name}');
@@ -177,22 +121,246 @@ class _AuthScreenState extends State<AuthScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: AuthForm(
-            isLogin: isLogin,
-            isLoading: _isLoading,
-            obscurePassword: _obscurePassword,
-            pickedProfileImage: _pickedProfileImage,
-            nameController: _nameController,
-            phoneController: _phoneController,
-            upiController: _upiController,
-            emailController: _emailController,
-            passwordController: _passwordController,
-            onModeChanged: (value) => setState(() => isLogin = value),
-            onPickProfileImage: _pickProfileImage,
-            onTogglePasswordVisibility: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-            onSubmit: _submit,
-            onGoogleSignIn: _signInWithGoogle,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Welcome',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _codeSent
+                      ? 'Enter the OTP sent to your phone'
+                      : 'Login or sign up with your phone number',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (!_codeSent) ...[
+                  Text(
+                    'Phone Number',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    style: GoogleFonts.inter(fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: '98765 43210',
+                      prefixText: '+91 ',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _sendOtp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Text(
+                              'Send OTP',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    'OTP',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    style: GoogleFonts.inter(fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText: '6-digit code',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _verifyOtp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Text(
+                              'Verify & Continue',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => setState(() {
+                            _codeSent = false;
+                            _otpController.clear();
+                          }),
+                    child: Text(
+                      'Change phone number',
+                      style: GoogleFonts.inter(color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(
+                        color: AppColors.textSecondary.withOpacity(0.2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'or',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(
+                        color: AppColors.textSecondary.withOpacity(0.2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      side: BorderSide(
+                        color: AppColors.textSecondary.withOpacity(0.3),
+                      ),
+                    ),
+                    icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
+                    label: Text(
+                      'Continue with Google',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                    children: [
+                      const TextSpan(text: 'By continuing, you agree to our '),
+                      TextSpan(
+                        text: 'Terms',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const TextSpan(text: ' and\n'),
+                      TextSpan(
+                        text: 'Privacy Policy',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const TextSpan(text: '.'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

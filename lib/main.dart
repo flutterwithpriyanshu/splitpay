@@ -52,9 +52,8 @@ class SplitPayApp extends StatelessWidget {
                 final user = snapshot.data!;
                 // authStateChanges fires the moment sign-in succeeds —
                 // before we know whether a users/{uid} doc exists yet.
-                // Check it here too, or brand-new Google users race
-                // straight past complete-profile into MainShell with
-                // no phone/UPI saved.
+                // Check it here too, or brand-new users race straight
+                // past complete-profile into MainShell with nothing saved.
                 return FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance
                       .collection('users')
@@ -85,6 +84,7 @@ class SplitPayApp extends StatelessWidget {
                       uid: user.uid,
                       name: user.displayName ?? '',
                       email: user.email ?? '',
+                      phone: user.phoneNumber,
                     );
                   },
                 );

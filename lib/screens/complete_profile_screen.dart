@@ -12,20 +12,26 @@ import 'package:splitpay/screens/main_shell.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/services/fcm_service.dart';
 
-/// Shown once, right after a brand-new Google sign-in, because Google
-/// gives us name + email but never a phone number or UPI ID — and both
-/// are mandatory here (phone is how friend-linking finds people, UPI ID
-/// is how settlement payments get sent).
+/// Shown once, right after a brand-new sign-in, to collect whatever the
+/// auth provider didn't already give us. Google gives name + email but
+/// never phone/UPI. Phone-OTP sign-in already gives a verified phone
+/// number, so that field is hidden in that case — only UPI (and name,
+/// pre-filled empty) is asked for.
 class CompleteProfileScreen extends StatefulWidget {
   final String uid;
   final String name;
   final String email;
+
+  /// Verified phone number from Firebase Auth (phone sign-in). Null when
+  /// the user signed in with Google — in that case we still ask for phone.
+  final String? phone;
 
   const CompleteProfileScreen({
     super.key,
     required this.uid,
     required this.name,
     required this.email,
+    this.phone,
   });
 
   @override
@@ -38,6 +44,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   late final TextEditingController _nameController;
   File? _pickedProfileImage;
   bool _isLoading = false;
+
+  bool get _phoneAlreadyVerified =>
+      widget.phone != null && widget.phone!.trim().isNotEmpty;
 
   @override
   void initState() {
@@ -59,20 +68,27 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   Future<void> _submit() async {
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
     if (name.isEmpty) {
       _showError('Please enter your full name');
       return;
     }
-    if (phone.isEmpty) {
-      _showError('Please enter your phone number');
-      return;
+
+    String normalizedPhone;
+    if (_phoneAlreadyVerified) {
+      normalizedPhone = normalizePhone(widget.phone!);
+    } else {
+      final phone = _phoneController.text.trim();
+      if (phone.isEmpty) {
+        _showError('Please enter your phone number');
+        return;
+      }
+      normalizedPhone = normalizePhone(phone);
+      if (normalizedPhone.length != 10) {
+        _showError('Phone number must contain 10 digits');
+        return;
+      }
     }
-    final normalizedPhone = normalizePhone(phone);
-    if (normalizedPhone.length != 10) {
-      _showError('Phone number must contain 10 digits');
-      return;
-    }
+
     final upi = _upiController.text.trim();
     if (upi.isEmpty) {
       _showError('Please enter your UPI ID');
@@ -136,7 +152,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'We need your phone number so friends can find and split bills with you, and your UPI ID so you can receive settlement payments.',
+                _phoneAlreadyVerified
+                    ? 'We need your UPI ID so you can receive settlement payments.'
+                    : 'We need your phone number so friends can find and split bills with you, and your UPI ID so you can receive settlement payments.',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -184,34 +202,36 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Phone Number',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                onChanged: (_) => setState(() {}),
-                style: GoogleFonts.inter(fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: '(555) 000-0000',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  suffixIcon: _phoneIsValid
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+              if (!_phoneAlreadyVerified) ...[
+                Text(
+                  'Phone Number',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  onChanged: (_) => setState(() {}),
+                  style: GoogleFonts.inter(fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: '(555) 000-0000',
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    suffixIcon: _phoneIsValid
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               Text(
                 'UPI ID',
                 style: GoogleFonts.inter(

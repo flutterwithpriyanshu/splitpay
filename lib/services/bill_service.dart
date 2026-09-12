@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:splitpay/model/bill.dart';
-import 'package:splitpay/services/local_notification_service.dart';
 
 class BillService {
   static final _db = FirebaseFirestore.instance;
@@ -88,12 +87,13 @@ class BillService {
         );
   }
 
-  /// Push notifications for add/edit/delete are handled server-side now —
-  /// a Cloud Function trigger on `bills/{billId}` writes fires off FCM
-  /// sends to participantUids automatically. Nothing to call here.
+  /// Push notifications for add/edit/delete/settle are handled entirely
+  /// server-side — a Cloud Functions trigger on `bills/{billId}` (create,
+  /// update, delete) reads `participantUids` off the doc and sends FCM to
+  /// every one of them (owner + friend + every group member), using each
+  /// user's `fcmToken` saved by FcmService. Nothing to call from here.
   static Future<void> addBill(Bill bill) async {
     await _db.collection('bills').add(bill.toFirestore(_uid));
-    await LocalNotificationService.billAdded(bill.title, bill.amount);
   }
 
   static Future<void> updateBill(String billId, Bill bill) async {
@@ -116,7 +116,6 @@ class BillService {
       'paidByUid': bill.paidByUid,
       // settledFriendIds and settledUids intentionally NOT touched here.
     });
-    await LocalNotificationService.billEdited(bill.title);
   }
 
   static Future<void> deleteBill(String billId) async {
@@ -124,9 +123,7 @@ class BillService {
     if (!doc.exists || doc.data()?['ownerId'] != _uid) {
       throw StateError('Only the person who added this bill can delete it');
     }
-    final title = doc.data()?['title'] ?? 'Bill';
     await _db.collection('bills').doc(billId).delete();
-    await LocalNotificationService.billDeleted(title);
   }
 
   /// Applies a custom payment amount toward your balance with [friendId],
@@ -237,13 +234,9 @@ class BillService {
     }
 
     await batch.commit();
-
-    final friendDoc = await _db.collection('friends').doc(friendId).get();
-    final friendName = friendDoc.data()?['name'];
-    await LocalNotificationService.settledUp(
-      friendName: friendName,
-      amount: amount,
-    );
+    // Settlement doc writes above trigger the same bills/{billId} Cloud
+    // Function used for add/edit/delete, so FCM for settlement goes out
+    // from there too — no separate call needed here.
   }
 
   /// Marks YOUR OWN participation as settled on every bill created by
@@ -264,6 +257,5 @@ class BillService {
       }
     }
     await batch.commit();
-    await LocalNotificationService.settledUp();
   }
 }
