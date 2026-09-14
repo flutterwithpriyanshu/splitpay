@@ -25,6 +25,35 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// Friends behind the last 4 bills (newest first), not the whole
+  /// friend list. Own bills contribute their friendIds; shared bills
+  /// (someone else's bill you're on) contribute the creator, found via
+  /// the reciprocal linked-friend entry in your own friends collection.
+  List<Friend> _recentBillFriends(
+    List<_ActivityItem> allActivity,
+    Map<String, Friend> friendById,
+    Map<String, Friend> friendByLinkedUid,
+  ) {
+    final result = <Friend>[];
+    final seen = <String>{};
+
+    for (final item in allActivity) {
+      final bill = item.bill;
+      if (item.isOwn) {
+        for (final fid in bill.friendIds) {
+          final f = friendById[fid];
+          if (f != null && seen.add(f.id)) result.add(f);
+          if (result.length == 4) return result;
+        }
+      } else {
+        final f = friendByLinkedUid[bill.ownerId];
+        if (f != null && seen.add(f.id)) result.add(f);
+        if (result.length == 4) return result;
+      }
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -64,6 +93,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (f.isLinked) f.linkedUid!: f.name,
             };
             final friendById = {for (final f in friends) f.id: f};
+            final friendByLinkedUid = {
+              for (final f in friends)
+                if (f.isLinked) f.linkedUid!: f,
+            };
 
             return StreamBuilder<List<Bill>>(
               stream: BillService.streamBills(),
@@ -126,6 +159,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ]..sort((a, b) => b.bill.date.compareTo(a.bill.date));
 
+                        final recentBillFriends = _recentBillFriends(
+                          allActivity,
+                          friendById,
+                          friendByLinkedUid,
+                        );
+                        final recentFriendsLoading =
+                            friendsLoading || billsLoading;
+
                         return RefreshIndicator(
                           color: AppColors.primary,
                           onRefresh: () async {
@@ -150,7 +191,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               const SizedBox(height: 20),
                               HomeBalanceCard(youOwe: youOwe, youGet: youGet),
                               const SizedBox(height: 24),
-                              _buildRecentFriends(friends, friendsLoading),
+                              _buildRecentFriends(
+                                recentBillFriends,
+                                recentFriendsLoading,
+                              ),
                               const SizedBox(height: 24),
                               _buildRecentActivityHeader(),
                               const SizedBox(height: 12),
@@ -245,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildEmptyFriends() {
     return Center(
       child: Text(
-        'No friends yet — add one from Add Bill',
+        'No bill activity yet — add a bill to see friends here',
         style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
       ),
     );

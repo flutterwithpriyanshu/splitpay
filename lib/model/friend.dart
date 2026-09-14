@@ -4,6 +4,7 @@ class Friend {
   final String avatarUrl;
   final String? phoneNumber;
   final String? linkedUid;
+  final DateTime? createdAt;
 
   Friend({
     required this.id,
@@ -11,6 +12,7 @@ class Friend {
     required this.avatarUrl,
     this.phoneNumber,
     this.linkedUid,
+    this.createdAt,
   });
 
   factory Friend.fromFirestore(String id, Map<String, dynamic> data) {
@@ -20,6 +22,7 @@ class Friend {
       avatarUrl: data['avatarUrl'] ?? 'https://i.pravatar.cc/150',
       phoneNumber: data['phoneNumber'],
       linkedUid: data['linkedUid'],
+      createdAt: (data['createdAt'] as dynamic)?.toDate(),
     );
   }
 
