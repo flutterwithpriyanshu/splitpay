@@ -11,7 +11,6 @@ import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
-import 'package:splitpay/screens/shared_group_details_screen.dart';
 import 'package:splitpay/screens/friends/widgets/balance_widgets.dart';
 
 /// Bottom-nav "Groups" screen. Real, persisted groups (see Group model /
@@ -536,12 +535,9 @@ class _GroupsTabState extends State<_GroupsTab> {
 
                     return GestureDetector(
                       onTap: () {
-                        final isOwn = group.ownerId == myUid;
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => isOwn
-                                ? GroupDetailsScreen(group: group)
-                                : SharedGroupDetailsScreen(group: group),
+                            builder: (_) => GroupDetailsScreen(group: group),
                           ),
                         );
                       },

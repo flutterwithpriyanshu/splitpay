@@ -39,11 +39,11 @@ class GroupService {
         );
   }
 
-  /// Single group doc, live. Both GroupDetailsScreen (owner) and
-  /// SharedGroupDetailsScreen (member) subscribe to this instead of
-  /// carrying around a static Group snapshot from the moment they were
-  /// opened — so member count / settle date / name stay correct in
-  /// real time no matter who changes what, on either side.
+  /// Single group doc, live. GroupDetailsScreen (the one screen used by
+  /// owner AND every member) subscribes to this instead of carrying
+  /// around a static Group snapshot from the moment it was opened — so
+  /// member count / settle date / name stay correct in real time no
+  /// matter who changes what.
   static Stream<Group> streamGroup(String groupId) {
     return _db
         .collection('groups')
