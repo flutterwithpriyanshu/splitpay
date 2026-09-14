@@ -14,10 +14,11 @@ class GroupService {
         .where('ownerId', isEqualTo: _uid)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map((doc) => Group.fromFirestore(doc.id, doc.data()))
-              .toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+          (snap) =>
+              snap.docs
+                  .map((doc) => Group.fromFirestore(doc.id, doc.data()))
+                  .toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
         );
   }
 
@@ -29,12 +30,26 @@ class GroupService {
         .where('memberUids', arrayContains: _uid)
         .snapshots()
         .map(
-          (snap) => snap.docs
-              .map((doc) => Group.fromFirestore(doc.id, doc.data()))
-              .where((g) => g.ownerId != _uid)
-              .toList()
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+          (snap) =>
+              snap.docs
+                  .map((doc) => Group.fromFirestore(doc.id, doc.data()))
+                  .where((g) => g.ownerId != _uid)
+                  .toList()
+                ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
         );
+  }
+
+  /// Single group doc, live. Both GroupDetailsScreen (owner) and
+  /// SharedGroupDetailsScreen (member) subscribe to this instead of
+  /// carrying around a static Group snapshot from the moment they were
+  /// opened — so member count / settle date / name stay correct in
+  /// real time no matter who changes what, on either side.
+  static Stream<Group> streamGroup(String groupId) {
+    return _db
+        .collection('groups')
+        .doc(groupId)
+        .snapshots()
+        .map((doc) => Group.fromFirestore(doc.id, doc.data() ?? {}));
   }
 
   static Future<Group> createGroup(
@@ -69,10 +84,30 @@ class GroupService {
     });
   }
 
-  static Future<void> updateMembers(
-    String groupId,
-    List<Friend> members,
-  ) {
+  /// Bundles every field the Edit Group Settings screen can touch into one
+  /// write — name, members, group type, and the simplify-debts toggle.
+  static Future<void> updateSettings(
+    String groupId, {
+    required String name,
+    required List<Friend> members,
+    required String groupType,
+    required bool simplifyDebts,
+  }) {
+    final memberFriendIds = members.map((f) => f.id).toList();
+    final memberUids = members
+        .where((f) => f.isLinked)
+        .map((f) => f.linkedUid!)
+        .toList();
+    return _db.collection('groups').doc(groupId).update({
+      'name': name,
+      'memberFriendIds': memberFriendIds,
+      'memberUids': memberUids,
+      'groupType': groupType,
+      'simplifyDebts': simplifyDebts,
+    });
+  }
+
+  static Future<void> updateMembers(String groupId, List<Friend> members) {
     final memberFriendIds = members.map((f) => f.id).toList();
     final memberUids = members
         .where((f) => f.isLinked)

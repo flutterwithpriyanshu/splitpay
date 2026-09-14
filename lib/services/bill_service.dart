@@ -118,6 +118,53 @@ class BillService {
     });
   }
 
+  /// Applies a payment from [fromUid] toward [toUid], scoped to one group,
+  /// spreading it across their oldest group bills first — same idea as
+  /// [settlePartialForFriend] but for the uid-based side of the data model
+  /// (group bills use participantUids/sharesByUid/paidByUid, not friendIds).
+  /// Used by GroupSettleUpScreen for both the Cash and confirmed-UPI paths.
+  static Future<void> settleGroupPayment({
+    required String groupId,
+    required String fromUid,
+    required String toUid,
+    required double amount,
+  }) async {
+    double remainingToApply = amount;
+    final batch = _db.batch();
+
+    final snap = await _db
+        .collection('bills')
+        .where('groupId', isEqualTo: groupId)
+        .orderBy('date')
+        .get();
+
+    for (final doc in snap.docs) {
+      if (remainingToApply <= 0.009) break;
+      final bill = Bill.fromFirestore(doc.id, doc.data());
+      final payerUid = bill.paidByUid ?? bill.ownerId;
+      if (payerUid != toUid) continue; // only bills toUid actually paid
+      if (!bill.participantUids.contains(fromUid)) continue;
+
+      final owed = bill.remainingForUid(fromUid);
+      if (owed <= 0.009) continue;
+      final pay = owed < remainingToApply ? owed : remainingToApply;
+      remainingToApply -= pay;
+
+      final paymentsMap = Map<String, double>.from(bill.partialPaymentsByUid);
+      paymentsMap[fromUid] = (paymentsMap[fromUid] ?? 0) + pay;
+
+      final update = <String, dynamic>{'partialPaymentsByUid': paymentsMap};
+      if ((bill.sharesByUid[fromUid] ?? 0) - paymentsMap[fromUid]! <= 0.009) {
+        final settledUids = List<String>.from(bill.settledUids);
+        if (!settledUids.contains(fromUid)) settledUids.add(fromUid);
+        update['settledUids'] = settledUids;
+      }
+      batch.update(doc.reference, update);
+    }
+
+    await batch.commit();
+  }
+
   static Future<void> deleteBill(String billId) async {
     final doc = await _db.collection('bills').doc(billId).get();
     if (!doc.exists || doc.data()?['ownerId'] != _uid) {

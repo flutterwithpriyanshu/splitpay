@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/theme/app_colors.dart';
 
@@ -62,7 +63,7 @@ class FriendBillTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${bill.date.day}/${bill.date.month}/${bill.date.year}',
+                  formatDate(bill.date),
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppColors.textSecondary,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/model/transaction.dart';
 import 'package:splitpay/services/transaction_service.dart';
 
@@ -303,7 +304,7 @@ class WalletScreen extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   // Show the adjustment note if present, otherwise the date
-                  tx.note ?? '${tx.date.day}/${tx.date.month}/${tx.date.year}',
+                  tx.note ?? formatDate(tx.date),
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppColors.textSecondary,

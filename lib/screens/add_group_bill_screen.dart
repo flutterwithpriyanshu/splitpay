@@ -7,6 +7,7 @@ import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_date_format.dart';
 
 /// Add-a-bill screen for a group MEMBER (not the group owner).
 ///
@@ -193,7 +194,7 @@ class _AddGroupBillScreenState extends State<AddGroupBillScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    'Date: ${_date.day}/${_date.month}/${_date.year}',
+                    'Date: ${formatDate(_date)}',
                     style: GoogleFonts.inter(fontSize: 14),
                   ),
                   trailing: const Icon(Icons.calendar_today_rounded, size: 18),

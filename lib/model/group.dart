@@ -22,6 +22,15 @@ class Group {
   /// Null = no recurring settle-up reminder set for this group.
   final int? settleUpDay;
 
+  /// Free-form label picked from a small preset list (Trip, Home, Couple,
+  /// Other, ...) — cosmetic only, shown on the edit-settings screen.
+  final String groupType;
+
+  /// When true, GroupSplitupScreen collapses everyone's net balances into
+  /// the smallest possible set of "who pays whom" payments instead of
+  /// listing raw per-person balances. See core/debt_simplifier.dart.
+  final bool simplifyDebts;
+
   Group({
     required this.id,
     required this.name,
@@ -30,6 +39,8 @@ class Group {
     this.memberUids = const [],
     required this.createdAt,
     this.settleUpDay,
+    this.groupType = 'Other',
+    this.simplifyDebts = true,
   });
 
   /// All member uids who can be reminded / who can add bills directly
@@ -46,6 +57,8 @@ class Group {
       memberUids: List<String>.from(data['memberUids'] ?? []),
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       settleUpDay: data['settleUpDay'] as int?,
+      groupType: data['groupType'] as String? ?? 'Other',
+      simplifyDebts: data['simplifyDebts'] as bool? ?? true,
     );
   }
 
@@ -57,6 +70,29 @@ class Group {
       'memberUids': memberUids,
       'createdAt': createdAt,
       'settleUpDay': settleUpDay,
+      'groupType': groupType,
+      'simplifyDebts': simplifyDebts,
     };
+  }
+
+  Group copyWith({
+    String? name,
+    List<String>? memberFriendIds,
+    List<String>? memberUids,
+    int? settleUpDay,
+    String? groupType,
+    bool? simplifyDebts,
+  }) {
+    return Group(
+      id: id,
+      name: name ?? this.name,
+      ownerId: ownerId,
+      memberFriendIds: memberFriendIds ?? this.memberFriendIds,
+      memberUids: memberUids ?? this.memberUids,
+      createdAt: createdAt,
+      settleUpDay: settleUpDay ?? this.settleUpDay,
+      groupType: groupType ?? this.groupType,
+      simplifyDebts: simplifyDebts ?? this.simplifyDebts,
+    );
   }
 }

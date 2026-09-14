@@ -5,6 +5,7 @@ import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/screens/edit_bill/widgets/form_components.dart';
 
@@ -336,7 +337,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                      formatDate(_selectedDate),
                       style: GoogleFonts.inter(fontSize: 14),
                     ),
                   ],

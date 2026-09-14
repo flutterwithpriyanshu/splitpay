@@ -8,63 +8,27 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_toast.dart';
-import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/screens/group_splitup_screen.dart';
+import 'package:splitpay/screens/edit_group_settings_screen.dart';
 import 'package:splitpay/screens/group_details/widgets/header_pill.dart';
 import 'package:splitpay/screens/group_details/widgets/balance_line.dart';
 import 'package:splitpay/screens/group_details/widgets/tabs_row.dart';
+import 'package:splitpay/core/app_date_format.dart';
 
-const _kMonthNames = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-const _kMonthFullNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-String _monthAbbr(DateTime d) => _kMonthNames[d.month - 1];
-String _dayPad(DateTime d) => d.day.toString().padLeft(2, '0');
-String _monthYear(DateTime d) => '${_kMonthFullNames[d.month - 1]} ${d.year}';
+String _monthAbbr(DateTime d) => monthAbbr(d);
+String _dayPad(DateTime d) => dayPad(d);
+String _monthYear(DateTime d) => monthYear(d);
 
 class GroupDetailsScreen extends StatelessWidget {
   final Group group;
 
   const GroupDetailsScreen({super.key, required this.group});
 
-  /// Remaining amount owed on this bill, summed across its participants.
-  ///
-  /// A friend is either tracked via `friendIds`/`remainingForFriend` (local,
-  /// non-linked) OR via `participantUids`/`remainingForUid` (linked) — never
-  /// both. Looping over both lists unconditionally double-counts every
-  /// linked friend's share (and even pulls in your OWN share via
-  /// participantUids, which always includes the owner's uid). That's what
-  /// was inflating the "due" total for groups.
   double _remainingForBill(Bill bill, Map<String, Friend> friendById) {
     double total = 0;
     for (final id in bill.friendIds) {
@@ -78,8 +42,6 @@ class GroupDetailsScreen extends StatelessWidget {
     return total;
   }
 
-  /// Net signed balance for this bill from the current user's point of
-  /// view: positive = you are owed, negative = you owe.
   double _netForBill(Bill bill, Map<String, Friend> friendById) {
     if (bill.paidBy == 'me') {
       return _remainingForBill(bill, friendById);
@@ -137,136 +99,149 @@ class GroupDetailsScreen extends StatelessWidget {
 
   Color _iconColorFor(Color bg) => Colors.black.withValues(alpha: 0.55);
 
-  /// Nets every bill down to one balance per group member, runs the debt
-  /// simplifier over it, and shows the resulting "X pays Y ₹Z" list — the
-  /// fewest payments needed to settle the whole group up.
   void _showSimplifiedDebts(
     BuildContext context,
     List<Bill> bills,
     List<Friend> members,
   ) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => GroupSettleUpScreen(group: group)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddBillScreen(
-                group: group,
-                onBillSaved: () => Navigator.of(context).pop(),
-              ),
-            ),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
-      ),
-      body: StreamBuilder<List<Friend>>(
-        stream: FriendService.streamFriends(),
-        builder: (context, friendSnapshot) {
-          final friends = friendSnapshot.data ?? [];
-          final friendById = {for (final f in friends) f.id: f};
-          final members = friends
-              .where((f) => group.memberFriendIds.contains(f.id))
-              .toList();
+    return StreamBuilder<Group>(
+      // Live doc — member count, name, settle date all stay correct in
+      // real time no matter who edits what while this screen is open.
+      stream: GroupService.streamGroup(group.id),
+      initialData: group,
+      builder: (context, groupSnapshot) {
+        final liveGroup = groupSnapshot.data ?? group;
 
-          return Column(
-            children: [
-              _Header(group: group, members: members),
-              Expanded(
-                child: StreamBuilder<List<Bill>>(
-                  stream: BillService.streamGroupBills(group.id),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final bills = (snapshot.data ?? [])
-                      ..sort((a, b) => b.date.compareTo(a.date));
-
-                    double net = 0;
-                    for (final bill in bills) {
-                      net += _netForBill(bill, friendById);
-                    }
-
-                    // Keep this device's monthly settle-up reminder in sync
-                    // with the group's current settle-up day and my current
-                    // balance in this group. Cheap no-op if unchanged.
-                    if (group.settleUpDay != null) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        LocalNotificationService.scheduleMonthlySettleReminder(
-                          groupId: group.id,
-                          groupName: group.name,
-                          day: group.settleUpDay!,
-                          myNetBalance: net,
-                        );
-                      });
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 14),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: GroupBalanceLine(net: net, members: members),
-                        ),
-                        const SizedBox(height: 14),
-                        GroupTabsRow(
-                          onSettleUp: () {
-                            showAppToast(
-                              context,
-                              'Open a friend from this group to settle up',
-                            );
-                          },
-                          onBalances: () =>
-                              _showSimplifiedDebts(context, bills, members),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: bills.isEmpty
-                              ? Center(
-                                  child: Text(
-                                    'No bills in this group yet. Tap + to add one.',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                )
-                              : _BillList(
-                                  bills: bills,
-                                  friendById: friendById,
-                                  iconFor: _iconFor,
-                                  iconBgFor: _iconBgFor,
-                                  iconColorFor: _iconColorFor,
-                                  remainingForBill: _remainingForBill,
-                                ),
-                        ),
-                      ],
-                    );
-                  },
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AddBillScreen(
+                    group: liveGroup,
+                    onBillSaved: () => Navigator.of(context).pop(),
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
+              );
+            },
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add_rounded, color: Colors.white),
+          ),
+          body: StreamBuilder<List<Friend>>(
+            stream: FriendService.streamFriends(),
+            builder: (context, friendSnapshot) {
+              final friends = friendSnapshot.data ?? [];
+              final friendById = {for (final f in friends) f.id: f};
+              final members = friends
+                  .where((f) => liveGroup.memberFriendIds.contains(f.id))
+                  .toList();
+
+              return Column(
+                children: [
+                  _Header(group: liveGroup),
+                  Expanded(
+                    child: StreamBuilder<List<Bill>>(
+                      stream: BillService.streamGroupBills(liveGroup.id),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final bills = (snapshot.data ?? [])
+                          ..sort((a, b) => b.date.compareTo(a.date));
+
+                        double net = 0;
+                        for (final bill in bills) {
+                          net += _netForBill(bill, friendById);
+                        }
+
+                        if (liveGroup.settleUpDay != null) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            LocalNotificationService.scheduleMonthlySettleReminder(
+                              groupId: liveGroup.id,
+                              groupName: liveGroup.name,
+                              day: liveGroup.settleUpDay!,
+                              myNetBalance: net,
+                            );
+                          });
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 14),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: GroupBalanceLine(
+                                net: net,
+                                members: members,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            GroupTabsRow(
+                              onSettleUp: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        GroupSettleUpScreen(group: liveGroup),
+                                  ),
+                                );
+                              },
+                              onBalances: () =>
+                                  _showSimplifiedDebts(context, bills, members),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: bills.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        'No bills in this group yet. Tap + to add one.',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    )
+                                  : _BillList(
+                                      bills: bills,
+                                      friendById: friendById,
+                                      iconFor: _iconFor,
+                                      iconBgFor: _iconBgFor,
+                                      iconColorFor: _iconColorFor,
+                                      remainingForBill: _remainingForBill,
+                                    ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
 
 class _Header extends StatelessWidget {
   final Group group;
-  final List<Friend> members;
 
-  const _Header({required this.group, required this.members});
+  const _Header({required this.group});
 
   Future<void> _editSettleUpDate(BuildContext context) async {
     final picked = await showModalBottomSheet<int>(
@@ -301,7 +276,11 @@ class _Header extends StatelessWidget {
     }
   }
 
+  /// Owner + every member, uid-based — identical shape to
+  /// SharedGroupDetailsScreen's member sheet, so the two screens finally
+  /// agree on who's actually in the group and how many.
   void _showMembers(BuildContext context) {
+    final uids = group.allMemberUids;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -317,7 +296,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${members.length} people',
+                  '${uids.length} people',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -325,38 +304,46 @@ class _Header extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (members.isEmpty)
-                  Text(
-                    'No members yet.',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
                 Wrap(
                   spacing: 16,
                   runSpacing: 12,
-                  children: members
+                  children: uids
                       .map(
-                        (friend) => SizedBox(
+                        (uid) => SizedBox(
                           width: 64,
                           child: Column(
                             children: [
-                              LocalAvatar(
-                                localKey: friend.id,
-                                isProfile: false,
-                                fallbackUrl: friend.avatarUrl,
+                              CircleAvatar(
                                 radius: 24,
+                                backgroundColor: AppColors.primary.withValues(
+                                  alpha: 0.1,
+                                ),
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  size: 24,
+                                ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                friend.name,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppColors.textPrimary,
+                              FutureBuilder<String>(
+                                future:
+                                    uid ==
+                                        FirebaseAuth.instance.currentUser?.uid
+                                    ? Future.value('You')
+                                    : FriendService.getUserName(uid),
+                                builder: (context, snap) => Text(
+                                  uid == group.ownerId
+                                      ? '${snap.data ?? '...'} (owner)'
+                                      : (snap.data ?? '...'),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -402,7 +389,13 @@ class _Header extends StatelessWidget {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => EditGroupSettingsScreen(group: group),
+                        ),
+                      );
+                    },
                     icon: const Icon(
                       Icons.settings_outlined,
                       color: Colors.white,
@@ -433,9 +426,13 @@ class _Header extends StatelessWidget {
                       onTap: () => _editSettleUpDate(context),
                     ),
                     const SizedBox(width: 10),
+                    // allMemberUids = ownerId + memberUids, same formula
+                    // SharedGroupDetailsScreen uses — one source of truth,
+                    // updates the moment the doc changes since this whole
+                    // screen is fed by a live GroupService.streamGroup.
                     GroupHeaderPill(
                       icon: Icons.people_alt_rounded,
-                      label: '${members.length} people',
+                      label: '${group.allMemberUids.length} people',
                       onTap: () => _showMembers(context),
                     ),
                   ],
@@ -468,7 +465,6 @@ class _BillList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Group bills by month/year, preserving the incoming (newest-first) sort.
     final grouped = <String, List<Bill>>{};
     for (final bill in bills) {
       final key = _monthYear(bill.date);

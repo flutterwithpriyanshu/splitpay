@@ -7,45 +7,18 @@ import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
+import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/screens/group_splitup_screen.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/balance_line.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/tabs_row.dart';
+import 'package:splitpay/core/app_date_format.dart';
 
-const _kMonthNames = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-const _kMonthFullNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-String _monthAbbr(DateTime d) => _kMonthNames[d.month - 1];
-String _dayPad(DateTime d) => d.day.toString().padLeft(2, '0');
-String _monthYear(DateTime d) => '${_kMonthFullNames[d.month - 1]} ${d.year}';
+String _monthAbbr(DateTime d) => monthAbbr(d);
+String _dayPad(DateTime d) => dayPad(d);
+String _monthYear(DateTime d) => monthYear(d);
 
 IconData _iconFor(String title) {
   final t = title.toLowerCase();
@@ -98,103 +71,111 @@ Color _iconBgFor(String title) {
 /// Shown when you tap a group that someone ELSE created and added you
 /// to as a linked member. Same visual language as the owner's
 /// GroupDetailsScreen (gradient header, balance line, tab pills,
-/// month-grouped bill list) but read-only: no add-bill FAB, no
-/// settings/edit-members action, bills aren't tappable. Data is scoped
-/// to `streamSharedBillsFrom(group.ownerId)` — bills that involve you,
-/// not the owner's full bill list.
+/// month-grouped bill list) but read-only: no add-bill FAB... actually
+/// any member CAN add bills here, just no settings/edit-members action,
+/// bills aren't tappable to edit. Data is scoped to
+/// `streamGroupBills(group.id)`. Wrapped in the same live
+/// GroupService.streamGroup as the owner's screen, so "X people" uses
+/// the identical formula and updates instantly either side.
 class SharedGroupDetailsScreen extends StatelessWidget {
   final Group group;
 
   const SharedGroupDetailsScreen({super.key, required this.group});
 
-  /// Same "smallest set of payments to settle up" simplification the
-  /// group owner sees, shown here from a member's point of view.
   void _showSimplifiedDebts(BuildContext context, List<Bill> bills) async {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => GroupSettleUpScreen(group: group)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      // Any group member — not just the owner — can add a bill here.
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddGroupBillScreen(
-                group: group,
-                onBillSaved: () => Navigator.of(context).pop(),
-              ),
-            ),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add_rounded, color: Colors.white),
-      ),
-      body: StreamBuilder<List<Bill>>(
-        stream: BillService.streamGroupBills(group.id),
-        builder: (context, snapshot) {
-          final bills = snapshot.data ?? [];
+    return StreamBuilder<Group>(
+      stream: GroupService.streamGroup(group.id),
+      initialData: group,
+      builder: (context, groupSnapshot) {
+        final liveGroup = groupSnapshot.data ?? group;
 
-          double net = 0;
-          for (final bill in bills) {
-            net += bill.balanceForUid(myUid);
-          }
-
-          if (group.settleUpDay != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              LocalNotificationService.scheduleMonthlySettleReminder(
-                groupId: group.id,
-                groupName: group.name,
-                day: group.settleUpDay!,
-                myNetBalance: net,
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AddGroupBillScreen(
+                    group: liveGroup,
+                    onBillSaved: () => Navigator.of(context).pop(),
+                  ),
+                ),
               );
-            });
-          }
+            },
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.add_rounded, color: Colors.white),
+          ),
+          body: StreamBuilder<List<Bill>>(
+            stream: BillService.streamGroupBills(liveGroup.id),
+            builder: (context, snapshot) {
+              final bills = snapshot.data ?? [];
 
-          return Column(
-            children: [
-              _SharedHeader(group: group),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SharedGroupBalanceLine(net: net),
-              ),
-              const SizedBox(height: 14),
-              SharedGroupTabsRow(
-                onSettleUp: () {
-                  showAppToast(
-                    context,
-                    'Open a friend from this group to settle up',
+              double net = 0;
+              for (final bill in bills) {
+                net += bill.balanceForUid(myUid);
+              }
+
+              if (liveGroup.settleUpDay != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  LocalNotificationService.scheduleMonthlySettleReminder(
+                    groupId: liveGroup.id,
+                    groupName: liveGroup.name,
+                    day: liveGroup.settleUpDay!,
+                    myNetBalance: net,
                   );
-                },
-                onBalances: () => _showSimplifiedDebts(context, bills),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: snapshot.connectionState == ConnectionState.waiting
-                    ? const Center(child: CircularProgressIndicator())
-                    : bills.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No bills in this group yet. Tap + to add one.',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                });
+              }
+
+              return Column(
+                children: [
+                  _SharedHeader(group: liveGroup),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SharedGroupBalanceLine(net: net),
+                  ),
+                  const SizedBox(height: 14),
+                  SharedGroupTabsRow(
+                    onSettleUp: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GroupSettleUpScreen(group: liveGroup),
                         ),
-                      )
-                    : _SharedBillList(bills: bills, myUid: myUid),
-              ),
-            ],
-          );
-        },
-      ),
+                      );
+                    },
+                    onBalances: () => _showSimplifiedDebts(context, bills),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: snapshot.connectionState == ConnectionState.waiting
+                        ? const Center(child: CircularProgressIndicator())
+                        : bills.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No bills in this group yet. Tap + to add one.',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          )
+                        : _SharedBillList(bills: bills, myUid: myUid),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -205,7 +186,7 @@ class _SharedHeader extends StatelessWidget {
   const _SharedHeader({required this.group});
 
   void _showMembers(BuildContext context) {
-    final uids = [group.ownerId, ...group.memberUids];
+    final uids = group.allMemberUids;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -253,7 +234,11 @@ class _SharedHeader extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               FutureBuilder<String>(
-                                future: FriendService.getUserName(uid),
+                                future:
+                                    uid ==
+                                        FirebaseAuth.instance.currentUser?.uid
+                                    ? Future.value('You')
+                                    : FriendService.getUserName(uid),
                                 builder: (context, snap) => Text(
                                   uid == group.ownerId
                                       ? '${snap.data ?? '...'} (owner)'
@@ -338,9 +323,11 @@ class _SharedHeader extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 12),
                 child: Row(
                   children: [
+                    // Same allMemberUids.length formula as the owner's
+                    // GroupDetailsScreen header — one source of truth.
                     SharedGroupHeaderPill(
                       icon: Icons.people_alt_rounded,
-                      label: '${group.memberUids.length + 1} people',
+                      label: '${group.allMemberUids.length} people',
                       onTap: () => _showMembers(context),
                     ),
                     if (group.settleUpDay != null) ...[

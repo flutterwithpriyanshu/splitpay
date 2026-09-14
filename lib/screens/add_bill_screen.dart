@@ -9,6 +9,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
@@ -681,7 +682,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                      formatDate(_selectedDate),
                       style: GoogleFonts.inter(fontSize: 14),
                     ),
                   ],
@@ -694,22 +695,26 @@ class _AddBillScreenState extends State<AddBillScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 AddBillLabel('Split With'),
-                TextButton.icon(
-                  onPressed: _showAddFriendSheet,
-                  icon: Icon(
-                    Icons.add_circle_rounded,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                  label: Text(
-                    'Add Friend',
-                    style: GoogleFonts.inter(
+                // Inside a group, participants are fixed to the group's
+                // members — no ad-hoc "Add Friend" here, so every member
+                // sees the exact same participant list on this bill.
+                if (widget.group == null)
+                  TextButton.icon(
+                    onPressed: _showAddFriendSheet,
+                    icon: Icon(
+                      Icons.add_circle_rounded,
+                      size: 18,
                       color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                    ),
+                    label: Text(
+                      'Add Friend',
+                      style: GoogleFonts.inter(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -743,7 +748,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
 
                 if (visibleFriends.isEmpty) {
                   return Text(
-                    'No friends yet — tap "Add Friend" above',
+                    widget.group != null
+                        ? 'No members in this group yet.'
+                        : 'No friends yet — tap "Add Friend" above',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: AppColors.textSecondary,
