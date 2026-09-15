@@ -62,34 +62,15 @@ class GroupDetailsScreen extends StatelessWidget {
 
   const GroupDetailsScreen({super.key, required this.group});
 
-  /// Remaining amount owed on this bill, summed across its participants.
-  ///
-  /// A friend is either tracked via `friendIds`/`remainingForFriend` (local,
-  /// non-linked) OR via `participantUids`/`remainingForUid` (linked) — never
-  /// both. Looping over both lists unconditionally double-counts every
-  /// linked friend's share (and even pulls in your OWN share via
-  /// participantUids, which always includes the owner's uid). That's what
-  /// was inflating the "due" total for groups.
-  double _remainingForBill(Bill bill, Map<String, Friend> friendById) {
-    double total = 0;
-    for (final id in bill.friendIds) {
-      final friend = friendById[id];
-      if (friend != null && friend.isLinked) {
-        total += bill.remainingForUid(friend.linkedUid!);
-      } else {
-        total += bill.remainingForFriend(id);
-      }
-    }
-    return total;
-  }
-
   /// Net signed balance for this bill from the current user's point of
-  /// view: positive = you are owed, negative = you owe.
-  double _netForBill(Bill bill, Map<String, Friend> friendById) {
-    if (bill.paidBy == 'me') {
-      return _remainingForBill(bill, friendById);
-    }
-    return -bill.remainingMyShare;
+  /// view: positive = you are owed, negative = you owe. Uses the uid-based
+  /// participant/payer data every group bill is actually saved with —
+  /// NOT the legacy friendId/paidBy fields, which are unset on group bills
+  /// and were causing every group bill to misreport as "you paid, settled".
+  double _netForBill(Bill bill) {
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    if (myUid == null) return 0;
+    return bill.balanceForUid(myUid);
   }
 
   /// Who this user owes / is owed by in this group, by name — used to put
@@ -231,7 +212,7 @@ class GroupDetailsScreen extends StatelessWidget {
 
                     double net = 0;
                     for (final bill in bills) {
-                      net += _netForBill(bill, friendById);
+                      net += _netForBill(bill);
                     }
 
                     // Keep this device's monthly settle-up reminder in sync
@@ -284,11 +265,9 @@ class GroupDetailsScreen extends StatelessWidget {
                                 )
                               : _BillList(
                                   bills: bills,
-                                  friendById: friendById,
                                   iconFor: _iconFor,
                                   iconBgFor: _iconBgFor,
                                   iconColorFor: _iconColorFor,
-                                  remainingForBill: _remainingForBill,
                                 ),
                         ),
                       ],
@@ -499,19 +478,15 @@ class _Header extends StatelessWidget {
 
 class _BillList extends StatelessWidget {
   final List<Bill> bills;
-  final Map<String, Friend> friendById;
   final IconData Function(String) iconFor;
   final Color Function(String) iconBgFor;
   final Color Function(Color) iconColorFor;
-  final double Function(Bill, Map<String, Friend>) remainingForBill;
 
   const _BillList({
     required this.bills,
-    required this.friendById,
     required this.iconFor,
     required this.iconBgFor,
     required this.iconColorFor,
-    required this.remainingForBill,
   });
 
   @override
@@ -546,7 +521,6 @@ class _BillList extends StatelessWidget {
             ...monthBills.map(
               (bill) => _BillRow(
                 bill: bill,
-                remaining: remainingForBill(bill, friendById),
                 icon: iconFor(bill.title),
                 iconBg: iconBgFor(bill.title),
                 iconColor: iconColorFor(iconBgFor(bill.title)),
@@ -561,14 +535,12 @@ class _BillList extends StatelessWidget {
 
 class _BillRow extends StatelessWidget {
   final Bill bill;
-  final double remaining;
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
 
   const _BillRow({
     required this.bill,
-    required this.remaining,
     required this.icon,
     required this.iconBg,
     required this.iconColor,
@@ -576,16 +548,21 @@ class _BillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final youPaid = bill.paidBy == 'me';
-    final isSettled = youPaid
-        ? remaining <= 0.009
-        : bill.remainingMyShare <= 0.009;
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    // Who actually paid, per the real uid-based data every group bill is
+    // saved with (falls back to the group owner when paidByUid is unset,
+    // matching Bill.balanceForUid's own convention).
+    final payerUid = bill.paidByUid ?? bill.ownerId;
+    final youPaid = payerUid == myUid;
 
-    final amount = youPaid ? remaining : bill.remainingMyShare;
-    final label = isSettled ? 'settled' : (youPaid ? 'get' : 'pay');
+    // Signed from MY point of view: positive = I'm owed, negative = I owe.
+    final net = myUid == null ? 0.0 : bill.balanceForUid(myUid);
+    final isSettled = net.abs() <= 0.009;
+    final amount = net.abs();
+    final label = isSettled ? 'settled' : (net > 0 ? 'get' : 'pay');
     final amountColor = isSettled
         ? AppColors.textSecondary
-        : (youPaid ? AppColors.success : AppColors.error);
+        : (net > 0 ? AppColors.success : AppColors.error);
     final canManage = bill.ownerId == FirebaseAuth.instance.currentUser?.uid;
 
     Widget row = GestureDetector(
