@@ -16,7 +16,7 @@ import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/screens/group_splitup_screen.dart';
 import 'package:splitpay/screens/group_details/widgets/header_pill.dart';
-import 'package:splitpay/screens/group_details/widgets/balance_line.dart';
+import 'package:splitpay/screens/group_details/widgets/balance_line_group_details.dart';
 import 'package:splitpay/screens/group_details/widgets/tabs_row.dart';
 
 const _kMonthNames = [

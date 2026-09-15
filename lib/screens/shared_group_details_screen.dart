@@ -5,14 +5,14 @@ import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
+import 'package:splitpay/screens/group_splitup_screen.dart';
+import 'package:splitpay/screens/shared_group_details/widgets/balance_line_shared_group.dart';
+import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
+import 'package:splitpay/screens/shared_group_details/widgets/tabs_row.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
-import 'package:splitpay/screens/group_splitup_screen.dart';
-import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
-import 'package:splitpay/screens/shared_group_details/widgets/balance_line.dart';
-import 'package:splitpay/screens/shared_group_details/widgets/tabs_row.dart';
 
 const _kMonthNames = [
   'Jan',
@@ -95,21 +95,11 @@ Color _iconBgFor(String title) {
   return const Color(0xFFE9E7FB);
 }
 
-/// Shown when you tap a group that someone ELSE created and added you
-/// to as a linked member. Same visual language as the owner's
-/// GroupDetailsScreen (gradient header, balance line, tab pills,
-/// month-grouped bill list) but read-only: no add-bill FAB, no
-/// settings/edit-members action, bills aren't tappable. Data is scoped
-/// to `streamSharedBillsFrom(group.ownerId)` — bills that involve you,
-/// not the owner's full bill list.
 class SharedGroupDetailsScreen extends StatelessWidget {
   final Group group;
-
   const SharedGroupDetailsScreen({super.key, required this.group});
 
-  /// Same "smallest set of payments to settle up" simplification the
-  /// group owner sees, shown here from a member's point of view.
-  void _showSimplifiedDebts(BuildContext context, List<Bill> bills) async {
+  void _showSimplifiedDebts(BuildContext context, List<Bill> bills) {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
@@ -121,18 +111,15 @@ class SharedGroupDetailsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      // Any group member — not just the owner — can add a bill here.
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddGroupBillScreen(
-                group: group,
-                onBillSaved: () => Navigator.of(context).pop(),
-              ),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AddGroupBillScreen(
+              group: group,
+              onBillSaved: () => Navigator.of(context).pop(),
             ),
-          );
-        },
+          ),
+        ),
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
@@ -140,7 +127,6 @@ class SharedGroupDetailsScreen extends StatelessWidget {
         stream: BillService.streamGroupBills(group.id),
         builder: (context, snapshot) {
           final bills = snapshot.data ?? [];
-
           double net = 0;
           for (final bill in bills) {
             net += bill.balanceForUid(myUid);
@@ -167,12 +153,10 @@ class SharedGroupDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               SharedGroupTabsRow(
-                onSettleUp: () {
-                  showAppToast(
-                    context,
-                    'Open a friend from this group to settle up',
-                  );
-                },
+                onSettleUp: () => showAppToast(
+                  context,
+                  'Open a friend from this group to settle up',
+                ),
                 onBalances: () => _showSimplifiedDebts(context, bills),
               ),
               const SizedBox(height: 8),
@@ -201,7 +185,6 @@ class SharedGroupDetailsScreen extends StatelessWidget {
 
 class _SharedHeader extends StatelessWidget {
   final Group group;
-
   const _SharedHeader({required this.group});
 
   void _showMembers(BuildContext context) {
@@ -212,72 +195,68 @@ class _SharedHeader extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${uids.length} people',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${uids.length} people',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: uids
-                      .map(
-                        (uid) => SizedBox(
-                          width: 64,
-                          child: Column(
-                            children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor: AppColors.primary.withValues(
-                                  alpha: 0.1,
-                                ),
-                                child: Icon(
-                                  Icons.person_rounded,
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  size: 24,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 16,
+                runSpacing: 12,
+                children: uids
+                    .map(
+                      (uid) => SizedBox(
+                        width: 64,
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
+                              child: Icon(
+                                Icons.person_rounded,
+                                color: AppColors.primary.withValues(alpha: 0.4),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            FutureBuilder<String>(
+                              future: FriendService.getUserName(uid),
+                              builder: (context, snap) => Text(
+                                uid == group.ownerId
+                                    ? '${snap.data ?? '...'} (owner)'
+                                    : (snap.data ?? '...'),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              FutureBuilder<String>(
-                                future: FriendService.getUserName(uid),
-                                builder: (context, snap) => Text(
-                                  uid == group.ownerId
-                                      ? '${snap.data ?? '...'} (owner)'
-                                      : (snap.data ?? '...'),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -421,7 +400,6 @@ class _SharedBillRow extends StatelessWidget {
     final remaining = bill.remainingForUid(myUid);
     final isSettled = remaining <= 0.009;
     final youPaid = bill.paidByUid == myUid;
-
     final label = isSettled ? 'settled' : (youPaid ? 'get' : 'pay');
     final amountColor = isSettled
         ? AppColors.textSecondary
