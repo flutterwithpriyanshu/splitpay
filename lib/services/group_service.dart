@@ -119,7 +119,19 @@ class GroupService {
     });
   }
 
-  static Future<void> deleteGroup(String groupId) {
-    return _db.collection('groups').doc(groupId).delete();
+  
+  static Future<void> deleteGroup(String groupId) async {
+    final billsSnap = await _db
+        .collection('bills')
+        .where('groupId', isEqualTo: groupId)
+        .where('ownerId', isEqualTo: _uid)
+        .get();
+
+    final batch = _db.batch();
+    for (final doc in billsSnap.docs) {
+      batch.delete(doc.reference);
+    }
+    batch.delete(_db.collection('groups').doc(groupId));
+    await batch.commit();
   }
 }

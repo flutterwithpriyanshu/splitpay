@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -287,25 +286,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              GestureDetector(
-                                onTap: () {
-                                  final uid =
-                                      FirebaseAuth.instance.currentUser?.uid ??
-                                      '';
-                                  Clipboard.setData(ClipboardData(text: uid));
-                                  showAppToast(context, 'UID copied: $uid');
-                                },
-                                child: Text(
-                                  'UID: ${FirebaseAuth.instance.currentUser?.uid ?? '-'}',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondary.withOpacity(
-                                      0.6,
-                                    ),
-                                  ),
                                 ),
                               ),
                             ],

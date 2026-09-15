@@ -359,46 +359,6 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  'GROUP TYPE',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _groupType,
-                      isExpanded: true,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                      ),
-                      items: _kGroupTypes
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) setState(() => _groupType = value);
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
                 Divider(color: AppColors.divider),
                 const SizedBox(height: 16),
                 Row(

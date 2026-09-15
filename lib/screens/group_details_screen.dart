@@ -268,6 +268,10 @@ class GroupDetailsScreen extends StatelessWidget {
                                   iconFor: _iconFor,
                                   iconBgFor: _iconBgFor,
                                   iconColorFor: _iconColorFor,
+                                  nameByUid: {
+                                    for (final f in friends)
+                                      if (f.isLinked) f.linkedUid!: f.name,
+                                  },
                                 ),
                         ),
                       ],
@@ -338,7 +342,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${members.length + 1} people',
+                  '${members.length} people',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -454,7 +458,7 @@ class _Header extends StatelessWidget {
                   children: [
                     GroupHeaderPill(
                       icon: Icons.people_alt_rounded,
-                      label: '${members.length + 1} people',
+                      label: '${members.length} people',
                       onTap: () => _showMembers(context),
                     ),
                     const SizedBox(width: 10),
@@ -483,12 +487,14 @@ class _BillList extends StatelessWidget {
   final IconData Function(String) iconFor;
   final Color Function(String) iconBgFor;
   final Color Function(Color) iconColorFor;
+  final Map<String, String> nameByUid;
 
   const _BillList({
     required this.bills,
     required this.iconFor,
     required this.iconBgFor,
     required this.iconColorFor,
+    required this.nameByUid,
   });
 
   @override
@@ -526,6 +532,7 @@ class _BillList extends StatelessWidget {
                 icon: iconFor(bill.title),
                 iconBg: iconBgFor(bill.title),
                 iconColor: iconColorFor(iconBgFor(bill.title)),
+                nameByUid: nameByUid,
               ),
             ),
           ],
@@ -540,12 +547,14 @@ class _BillRow extends StatelessWidget {
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
+  final Map<String, String> nameByUid;
 
   const _BillRow({
     required this.bill,
     required this.icon,
     required this.iconBg,
     required this.iconColor,
+    required this.nameByUid,
   });
 
   @override
@@ -637,7 +646,7 @@ class _BillRow extends StatelessWidget {
                   Text(
                     youPaid
                         ? 'You paid ${AppCurrency.symbol}${bill.amount.toStringAsFixed(0)}'
-                        : 'A friend paid ${AppCurrency.symbol}${bill.amount.toStringAsFixed(0)}',
+                        : '${nameByUid[payerUid] ?? 'A friend'} paid ${AppCurrency.symbol}${bill.amount.toStringAsFixed(0)}',
                     style: GoogleFonts.inter(
                       fontSize: 11,
                       color: AppColors.textSecondary,
