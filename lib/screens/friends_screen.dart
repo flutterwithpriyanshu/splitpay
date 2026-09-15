@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' hide Group;
 import 'package:google_fonts/google_fonts.dart';
@@ -34,7 +35,7 @@ class FriendsScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Friends',
+                    'friends'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -88,7 +89,7 @@ class FriendsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Add Friend',
+                    'add_friend'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
@@ -106,7 +107,7 @@ class FriendsScreen extends StatelessWidget {
                   ],
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(hintText: 'Name'),
+                    decoration: InputDecoration(hintText: 'name'.tr()),
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -115,8 +116,8 @@ class FriendsScreen extends StatelessWidget {
                         child: TextField(
                           controller: phoneController,
                           keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            hintText: 'Phone number',
+                          decoration: InputDecoration(
+                            hintText: 'phone_number'.tr(),
                           ),
                         ),
                       ),
@@ -221,7 +222,7 @@ class FriendsScreen extends StatelessWidget {
                               if (name.isEmpty || phone.isEmpty) {
                                 showAppToast(
                                   sheetContext,
-                                  'Name and phone are required',
+                                  'name_phone_required'.tr(),
                                 );
                                 return;
                               }
@@ -263,7 +264,7 @@ class FriendsScreen extends StatelessWidget {
                                 if (sheetContext.mounted) {
                                   showAppToast(
                                     sheetContext,
-                                    'Friend already added',
+                                    'friend_already_added'.tr(),
                                   );
                                 }
                                 return;
@@ -301,7 +302,7 @@ class FriendsScreen extends StatelessWidget {
                               ),
                             )
                           : Text(
-                              'Add Friend',
+                              'add_friend'.tr(),
                               style: GoogleFonts.inter(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -366,7 +367,7 @@ class _FriendsTab extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'No friends added yet',
+                  'no_friends_added_yet'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -376,7 +377,7 @@ class _FriendsTab extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: onAddFriend,
                   icon: const Icon(Icons.person_add_alt_1_rounded),
-                  label: const Text('Add Friend'),
+                  label: Text('add_friend'.tr()),
                 ),
               ],
             ),
@@ -404,7 +405,7 @@ class _FriendsTab extends StatelessWidget {
                   balanceText = '...';
                   balanceColor = AppColors.textSecondary;
                 } else if (balance == 0) {
-                  balanceText = 'Settled up';
+                  balanceText = 'settled_up'.tr();
                   balanceColor = AppColors.textSecondary;
                 } else if (balance > 0) {
                   balanceText =

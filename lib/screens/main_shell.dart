@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/screens/home_screen.dart';
@@ -25,10 +26,7 @@ class _MainShellState extends State<MainShell> {
     ];
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -46,10 +44,26 @@ class _MainShellState extends State<MainShell> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(index: 0, icon: Icons.home_rounded, label: 'Home'),
-                _buildNavItem(index: 1, icon: Icons.people_alt_rounded, label: 'Friends'),
-                _buildNavItem(index: 2, icon: Icons.groups_rounded, label: 'Groups'),
-                _buildNavItem(index: 3, icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
+                _buildNavItem(
+                  index: 0,
+                  icon: Icons.home_rounded,
+                  label: 'home'.tr(),
+                ),
+                _buildNavItem(
+                  index: 1,
+                  icon: Icons.people_alt_rounded,
+                  label: 'friends'.tr(),
+                ),
+                _buildNavItem(
+                  index: 2,
+                  icon: Icons.groups_rounded,
+                  label: 'groups'.tr(),
+                ),
+                _buildNavItem(
+                  index: 3,
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'wallet'.tr(),
+                ),
               ],
             ),
           ),
@@ -71,13 +85,19 @@ class _MainShellState extends State<MainShell> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+          color: selected
+              ? AppColors.primary.withOpacity(0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: selected ? AppColors.primary : AppColors.textSecondary, size: 24),
+            Icon(
+              icon,
+              color: selected ? AppColors.primary : AppColors.textSecondary,
+              size: 24,
+            ),
             const SizedBox(height: 4),
             Text(
               label,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,7 +34,7 @@ class GroupsScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Groups',
+                    'groups'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -93,7 +94,7 @@ class GroupsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Create Group',
+                      'create_group'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -102,11 +103,11 @@ class GroupsScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(hintText: 'Group name'),
+                      decoration: InputDecoration(hintText: 'group_name'.tr()),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Add members',
+                      'add_members'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -121,7 +122,7 @@ class GroupsScreen extends StatelessWidget {
 
                         if (friends.isEmpty) {
                           return Text(
-                            'Add a friend first from the Friends tab.',
+                            'add_friend_first_hint'.tr(),
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               color: AppColors.textSecondary,
@@ -158,7 +159,7 @@ class GroupsScreen extends StatelessWidget {
                           children: [
                             if (query.isEmpty && recentFour.isNotEmpty) ...[
                               Text(
-                                'Recent',
+                                'recent'.tr(),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -247,7 +248,7 @@ class GroupsScreen extends StatelessWidget {
                               onChanged: (val) =>
                                   setSheetState(() => searchQuery = val),
                               decoration: InputDecoration(
-                                hintText: 'Search friends by name',
+                                hintText: 'search_friends_hint'.tr(),
                                 prefixIcon: const Icon(
                                   Icons.search_rounded,
                                   size: 20,
@@ -316,7 +317,7 @@ class GroupsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Settle up reminder (optional)',
+                      'settle_reminder_optional'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -355,7 +356,7 @@ class GroupsScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Text(
                               settleUpDay == null
-                                  ? 'Every month on... (tap to set)'
+                                  ? 'every_month_tap_to_set'.tr()
                                   : 'Remind every month on day $settleUpDay',
                               style: GoogleFonts.inter(fontSize: 13),
                             ),
@@ -374,14 +375,14 @@ class GroupsScreen extends StatelessWidget {
                                 if (name.isEmpty) {
                                   showAppToast(
                                     sheetContext,
-                                    'Please enter a group name',
+                                    'please_enter_group_name'.tr(),
                                   );
                                   return;
                                 }
                                 if (selectedIds.length < 2) {
                                   showAppToast(
                                     sheetContext,
-                                    'Select at least 2 friends for a group',
+                                    'select_two_friends'.tr(),
                                   );
                                   return;
                                 }
@@ -413,7 +414,7 @@ class GroupsScreen extends StatelessWidget {
                                     setSheetState(() => isSaving = false);
                                     showAppToast(
                                       sheetContext,
-                                      'Could not create group. Try again.',
+                                      'could_not_create_group'.tr(),
                                     );
                                   }
                                 }
@@ -434,7 +435,7 @@ class GroupsScreen extends StatelessWidget {
                                 ),
                               )
                             : Text(
-                                'Create',
+                                'create'.tr(),
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,

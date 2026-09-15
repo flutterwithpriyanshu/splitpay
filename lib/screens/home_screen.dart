@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -233,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Recent Friends',
+          'recent_friends'.tr(),
           style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -331,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------- Recent Activity ----------
   Widget _buildRecentActivityHeader() {
     return Text(
-      'Recent Activity',
+      'recent_activity'.tr(),
       style: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w700,
@@ -357,9 +358,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (item.isOwn) {
         final names = bill.friendIds
-            .map((id) => friendNameById[id] ?? 'Unknown')
+            .map((id) => friendNameById[id] ?? 'unknown'.tr())
             .join(', ');
-        subtitle = names.isEmpty ? 'No friends' : 'with $names';
+        subtitle = names.isEmpty ? 'no_friends'.tr() : 'with $names';
         isSettled =
             bill.friendIds.isNotEmpty &&
             bill.friendIds.every((fid) {
@@ -370,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
         displayAmount = bill.amount;
       } else {
-        final creatorName = nameByLinkedUid[bill.ownerId] ?? 'Someone';
+        final creatorName = nameByLinkedUid[bill.ownerId] ?? 'someone'.tr();
         final groupName = bill.groupId != null
             ? groupNameById[bill.groupId]
             : null;
@@ -515,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  isSettled ? 'Settled' : 'Pending',
+                  isSettled ? 'settled'.tr() : 'pending'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -558,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'No bills yet',
+            'no_bills_yet'.tr(),
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -567,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Add your first bill to get started',
+            'add_first_bill_hint'.tr(),
             style: GoogleFonts.inter(
               fontSize: 12,
               color: AppColors.textSecondary,

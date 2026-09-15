@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -44,7 +45,7 @@ class WalletScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 children: [
                   Text(
-                    'Wallet',
+                    'wallet'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
@@ -55,7 +56,7 @@ class WalletScreen extends StatelessWidget {
                   _buildBalanceCard(walletBalance),
                   const SizedBox(height: 24),
                   Text(
-                    'Monthly Spending',
+                    'monthly_spending'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -66,7 +67,7 @@ class WalletScreen extends StatelessWidget {
                   _buildBarChart(monthlySpending),
                   const SizedBox(height: 24),
                   Text(
-                    'Transaction History',
+                    'transaction_history'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -149,7 +150,7 @@ class WalletScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Wallet Balance',
+            'wallet_balance'.tr(),
             style: GoogleFonts.inter(
               fontSize: 13,
               color: Colors.white.withOpacity(0.85),
@@ -335,7 +336,7 @@ class WalletScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  tx.isCompleted ? 'Completed' : 'Pending',
+                  tx.isCompleted ? 'completed'.tr() : 'pending'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -364,7 +365,7 @@ class WalletScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No transactions yet',
+            'no_transactions_yet'.tr(),
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -373,7 +374,7 @@ class WalletScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Settle up with a friend to see it here',
+            'settle_up_hint'.tr(),
             style: GoogleFonts.inter(
               fontSize: 12,
               color: AppColors.textSecondary,
