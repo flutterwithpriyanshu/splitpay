@@ -10,6 +10,7 @@ import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
+import 'package:splitpay/screens/bill_detail_screen.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
@@ -510,7 +511,6 @@ class _BillRow extends StatelessWidget {
     final netForBill = bill.balanceForUid(myUid);
     final isSettled = netForBill.abs() <= 0.009;
     final youPaid = bill.paidByUid == myUid;
-    final myShare = bill.sharesByUid[myUid] ?? 0;
 
     final amount = netForBill.abs();
     final label = isSettled ? 'settled' : (youPaid ? 'you lent' : 'you owe');
@@ -519,182 +519,190 @@ class _BillRow extends StatelessWidget {
         : (youPaid ? AppColors.success : AppColors.warning);
     final canManage = bill.ownerId == myUid;
 
-    return GestureDetector(
-      onTap: () {
-        if (!canManage) {
-          showAppToast(
-            context,
-            'Only the person who added this bill can edit it',
-          );
-          return;
-        }
-        if (bill.settledFriendIds.isNotEmpty ||
-            bill.settledUids.isNotEmpty ||
-            bill.partialPaymentsByFriend.isNotEmpty ||
-            bill.partialPaymentsByUid.isNotEmpty ||
-            bill.myPartialPayment > 0) {
-          showAppToast(
-            context,
-            'This bill has settled activity and can no longer be edited',
-          );
-        } else {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => EditBillScreen(bill: bill)));
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 40,
-              child: Column(
-                children: [
-                  Text(
-                    monthAbbr(bill.date),
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    dayPad(bill.date),
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    bill.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Your share \u20b9${myShare.toStringAsFixed(0)}',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+    final cardContent = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 40,
+            child: Column(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: amountColor,
-                      ),
-                    ),
-                    Text(
-                      isSettled
-                          ? '\u20b90'
-                          : '\u20b9${amount.toStringAsFixed(2)}',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: amountColor,
-                      ),
-                    ),
-                  ],
-                ),
-                if (canManage)
-                  PopupMenuButton<String>(
-                    onSelected: (action) async {
-                      if (action == 'edit') {
-                        if (bill.settledFriendIds.isNotEmpty ||
-                            bill.settledUids.isNotEmpty ||
-                            bill.partialPaymentsByFriend.isNotEmpty ||
-                            bill.partialPaymentsByUid.isNotEmpty ||
-                            bill.myPartialPayment > 0) {
-                          showAppToast(
-                            context,
-                            'This bill has settled activity and can no longer be edited',
-                          );
-                        } else {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => EditBillScreen(bill: bill),
-                            ),
-                          );
-                        }
-                      } else {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (dialogContext) => AlertDialog(
-                            title: const Text('Delete bill?'),
-                            content: const Text(
-                              'This bill will be removed for everyone in the group.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(dialogContext, false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(dialogContext, true),
-                                child: const Text('Delete'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirmed == true && context.mounted) {
-                          try {
-                            await BillService.deleteBill(bill.id);
-                          } catch (error) {
-                            if (context.mounted) {
-                              showAppToast(context, error.toString());
-                            }
-                          }
-                        }
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
+                Text(
+                  monthAbbr(bill.date),
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                   ),
+                ),
+                Text(
+                  dayPad(bill.date),
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bill.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Paid \u20b9${bill.amount.toStringAsFixed(0)}',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.inter(fontSize: 11, color: amountColor),
+              ),
+              Text(
+                isSettled ? '\u20b90' : '\u20b9${amount.toStringAsFixed(2)}',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: amountColor,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
+    );
+
+    void openEdit() {
+      if (bill.settledFriendIds.isNotEmpty ||
+          bill.settledUids.isNotEmpty ||
+          bill.partialPaymentsByFriend.isNotEmpty ||
+          bill.partialPaymentsByUid.isNotEmpty ||
+          bill.myPartialPayment > 0) {
+        showAppToast(
+          context,
+          'This bill has settled activity and can no longer be edited',
+        );
+      } else {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => EditBillScreen(bill: bill)));
+      }
+    }
+
+    void openDetail() {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BillDetailScreen(
+            bill: bill,
+            icon: icon,
+            iconBg: iconBg,
+            iconColor: iconColor,
+          ),
+        ),
+      );
+    }
+
+    if (!canManage) {
+      return GestureDetector(onTap: openDetail, child: cardContent);
+    }
+
+    return Dismissible(
+      key: ValueKey(bill.id),
+      background: _swipeBackground(
+        alignment: Alignment.centerLeft,
+        color: AppColors.error,
+        icon: Icons.delete_rounded,
+      ),
+      secondaryBackground: _swipeBackground(
+        alignment: Alignment.centerRight,
+        color: AppColors.primary,
+        icon: Icons.edit_rounded,
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Delete bill?'),
+              content: const Text(
+                'This bill will be removed for everyone in the group.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+          if (confirmed != true) return false;
+          try {
+            await BillService.deleteBill(bill.id);
+            return true;
+          } catch (error) {
+            if (context.mounted) {
+              showAppToast(context, error.toString());
+            }
+            return false;
+          }
+        } else {
+          openEdit();
+          return false;
+        }
+      },
+      child: GestureDetector(onTap: openDetail, child: cardContent),
+    );
+  }
+
+  Widget _swipeBackground({
+    required Alignment alignment,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Icon(icon, color: color),
     );
   }
 }

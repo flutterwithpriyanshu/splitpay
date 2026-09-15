@@ -365,7 +365,13 @@ class FriendDetailsScreen extends StatelessWidget {
         child: StreamBuilder<List<Bill>>(
           stream: BillService.streamBillsForFriend(friend.id),
           builder: (context, ownSnapshot) {
-            final ownBills = ownSnapshot.data ?? [];
+            // Group bills carry their own groupId and belong to the
+            // group's screens, not this friend's 1:1 page — filter them
+            // out here so they don't show twice or get double-counted
+            // in this friend's balance.
+            final ownBills = (ownSnapshot.data ?? [])
+                .where((b) => b.groupId == null)
+                .toList();
             final ownLoading =
                 ownSnapshot.connectionState == ConnectionState.waiting;
 
@@ -376,7 +382,9 @@ class FriendDetailsScreen extends StatelessWidget {
             return StreamBuilder<List<Bill>>(
               stream: sharedStream,
               builder: (context, sharedSnapshot) {
-                final sharedBills = sharedSnapshot.data ?? [];
+                final sharedBills = (sharedSnapshot.data ?? [])
+                    .where((b) => b.groupId == null)
+                    .toList();
                 final sharedLoading =
                     friend.isLinked &&
                     sharedSnapshot.connectionState == ConnectionState.waiting;

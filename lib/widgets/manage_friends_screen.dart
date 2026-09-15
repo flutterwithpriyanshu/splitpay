@@ -58,6 +58,10 @@ class ManageFriendsScreen extends StatelessWidget {
   double _balanceForFriend(List<Bill> bills, Friend friend) {
     double balance = 0;
     for (final bill in bills) {
+      // Group bills are tallied on the group's own screens — skip them
+      // here so a linked friend's group share doesn't get double-counted
+      // into their separate 1:1 friend balance.
+      if (bill.groupId != null) continue;
       if (friend.isLinked) {
         if (!bill.isParticipant(friend.linkedUid!)) continue;
         balance += bill.balanceForUid(friend.linkedUid!);
@@ -146,11 +150,11 @@ class ManageFriendsScreen extends StatelessWidget {
                             balanceColor = AppColors.textSecondary;
                           } else if (balance > 0) {
                             balanceText =
-                                'Owes you ₹${balance.abs().toStringAsFixed(0)}';
+                                'Get ₹${balance.abs().toStringAsFixed(0)}';
                             balanceColor = AppColors.success;
                           } else {
                             balanceText =
-                                'You owe ₹${balance.abs().toStringAsFixed(0)}';
+                                'Pay ₹${balance.abs().toStringAsFixed(0)}';
                             balanceColor = AppColors.error;
                           }
 

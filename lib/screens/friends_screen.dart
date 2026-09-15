@@ -10,7 +10,6 @@ import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
-import 'package:splitpay/screens/groups_screen.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 
@@ -18,58 +17,8 @@ import 'package:splitpay/core/app_toast.dart';
 /// (same data as ManageFriendsScreen, shown inline instead of as a
 /// separate push). Groups now live on their own bottom-nav tab —
 /// see GroupsScreen.
-///
-/// Also supports a "Select" mode: search by name, multi-select friends,
-/// then "Add to Group" hands the picked ids straight into
-/// GroupsScreen.showCreateGroupSheet as preselectedIds.
-class FriendsScreen extends StatefulWidget {
+class FriendsScreen extends StatelessWidget {
   const FriendsScreen({super.key});
-
-  @override
-  State<FriendsScreen> createState() => _FriendsScreenState();
-}
-
-class _FriendsScreenState extends State<FriendsScreen> {
-  bool _selectionMode = false;
-  final Set<String> _selectedIds = {};
-  String _searchQuery = '';
-  final _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _toggleSelectionMode() {
-    setState(() {
-      _selectionMode = !_selectionMode;
-      if (!_selectionMode) {
-        _selectedIds.clear();
-        _searchQuery = '';
-        _searchController.clear();
-      }
-    });
-  }
-
-  void _toggleFriendSelected(String id) {
-    setState(() {
-      if (_selectedIds.contains(id)) {
-        _selectedIds.remove(id);
-      } else {
-        _selectedIds.add(id);
-      }
-    });
-  }
-
-  void _addSelectedToGroup() {
-    if (_selectedIds.isEmpty) {
-      showAppToast(context, 'Select at least one friend first');
-      return;
-    }
-    GroupsScreen.showCreateGroupSheet(context, preselectedIds: _selectedIds);
-    _toggleSelectionMode();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,72 +40,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  TextButton(
-                    onPressed: _toggleSelectionMode,
-                    child: Text(
-                      _selectionMode ? 'Cancel' : 'Select',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
-            if (_selectionMode)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                  decoration: InputDecoration(
-                    hintText: 'Search friends by name',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
             Expanded(
               child: _FriendsTab(
                 onAddFriend: () => _showAddFriendSheet(context),
-                selectionMode: _selectionMode,
-                selectedIds: _selectedIds,
-                searchQuery: _searchQuery,
-                onToggleSelect: _toggleFriendSelected,
               ),
             ),
           ],
         ),
       ),
-      floatingActionButton: _selectionMode
-          ? FloatingActionButton.extended(
-              onPressed: _addSelectedToGroup,
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.group_add_rounded, color: Colors.white),
-              label: Text(
-                'Add to Group (${_selectedIds.length})',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            )
-          : FloatingActionButton(
-              onPressed: () => _showAddFriendSheet(context),
-              backgroundColor: AppColors.primary,
-              child: const Icon(
-                Icons.person_add_alt_1_rounded,
-                color: Colors.white,
-              ),
-            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddFriendSheet(context),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+      ),
     );
   }
 
@@ -419,27 +318,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 }
 
-/// Same list/balance logic as ManageFriendsScreen, inline. Also handles
-/// selection-mode rendering (checkbox + tap-to-select instead of push)
-/// and name search filtering, driven by the parent FriendsScreen's state.
+/// Same list/balance logic as ManageFriendsScreen, inline.
 class _FriendsTab extends StatelessWidget {
-  const _FriendsTab({
-    required this.onAddFriend,
-    required this.selectionMode,
-    required this.selectedIds,
-    required this.searchQuery,
-    required this.onToggleSelect,
-  });
+  const _FriendsTab({required this.onAddFriend});
 
   final VoidCallback onAddFriend;
-  final bool selectionMode;
-  final Set<String> selectedIds;
-  final String searchQuery;
-  final ValueChanged<String> onToggleSelect;
 
   double _balanceForFriend(List<Bill> bills, Friend friend) {
     double balance = 0;
     for (final bill in bills) {
+      // Group bills belong to the group's own balance screens — don't
+      // fold them into this friend's 1:1 balance too, or a linked
+      // friend's group share gets counted here AND on the group page.
+      if (bill.groupId != null) continue;
       if (friend.isLinked) {
         if (!bill.isParticipant(friend.linkedUid!)) continue;
         balance += bill.balanceForUid(friend.linkedUid!);
@@ -461,14 +352,14 @@ class _FriendsTab extends StatelessWidget {
     return StreamBuilder<List<Friend>>(
       stream: FriendService.streamFriends(),
       builder: (context, friendSnapshot) {
-        final allFriends = friendSnapshot.data ?? [];
+        final friends = friendSnapshot.data ?? [];
         final friendsLoading =
             friendSnapshot.connectionState == ConnectionState.waiting;
 
         if (friendsLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (allFriends.isEmpty) {
+        if (friends.isEmpty) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -491,25 +382,6 @@ class _FriendsTab extends StatelessWidget {
           );
         }
 
-        final query = searchQuery.trim().toLowerCase();
-        final friends = query.isEmpty
-            ? allFriends
-            : allFriends
-                  .where((f) => f.name.toLowerCase().contains(query))
-                  .toList();
-
-        if (friends.isEmpty) {
-          return Center(
-            child: Text(
-              'No friends match "$searchQuery"',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          );
-        }
-
         return StreamBuilder<List<Bill>>(
           stream: BillService.streamBills(),
           builder: (context, billSnapshot) {
@@ -523,7 +395,6 @@ class _FriendsTab extends StatelessWidget {
               itemBuilder: (context, index) {
                 final friend = friends[index];
                 final balance = _balanceForFriend(bills, friend);
-                final isSelected = selectedIds.contains(friend.id);
 
                 String balanceText;
                 Color balanceColor;
@@ -535,50 +406,28 @@ class _FriendsTab extends StatelessWidget {
                   balanceText = 'Settled up';
                   balanceColor = AppColors.textSecondary;
                 } else if (balance > 0) {
-                  balanceText = 'Owes you ₹${balance.abs().toStringAsFixed(0)}';
+                  balanceText = 'Get ₹${balance.abs().toStringAsFixed(0)}';
                   balanceColor = AppColors.success;
                 } else {
-                  balanceText = 'You owe ₹${balance.abs().toStringAsFixed(0)}';
+                  balanceText = 'Pay ₹${balance.abs().toStringAsFixed(0)}';
                   balanceColor = AppColors.error;
                 }
 
                 return GestureDetector(
-                  onTap: () {
-                    if (selectionMode) {
-                      onToggleSelect(friend.id);
-                      return;
-                    }
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => FriendDetailsScreen(friend: friend),
-                      ),
-                    );
-                  },
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FriendDetailsScreen(friend: friend),
+                    ),
+                  ),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary.withValues(alpha: 0.08)
-                          : AppColors.surface,
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: isSelected
-                          ? Border.all(color: AppColors.primary, width: 1.5)
-                          : null,
                     ),
                     child: Row(
                       children: [
-                        if (selectionMode) ...[
-                          Icon(
-                            isSelected
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            color: isSelected
-                                ? AppColors.primary
-                                : AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 10),
-                        ],
                         LocalAvatar(
                           localKey: friend.id,
                           isProfile: false,
@@ -610,11 +459,10 @@ class _FriendsTab extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (!selectionMode)
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppColors.textSecondary,
-                          ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),
