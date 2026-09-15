@@ -5,6 +5,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/model/transaction.dart';
 import 'package:splitpay/services/transaction_service.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class WalletScreen extends StatelessWidget {
   const WalletScreen({super.key});
@@ -156,7 +157,7 @@ class WalletScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${balance < 0 ? '-' : ''}₹${balance.abs().toStringAsFixed(2)}',
+            '${balance < 0 ? '-' : ''}${AppCurrency.symbol}${balance.abs().toStringAsFixed(2)}',
             style: GoogleFonts.inter(
               fontSize: 30,
               fontWeight: FontWeight.w700,
@@ -317,7 +318,7 @@ class WalletScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${isSent ? '-' : '+'}₹${tx.amount.toStringAsFixed(0)}',
+                '${isSent ? '-' : '+'}${AppCurrency.symbol}${tx.amount.toStringAsFixed(0)}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

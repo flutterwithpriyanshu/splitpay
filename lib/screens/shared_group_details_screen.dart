@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_toast.dart';
+import 'package:splitpay/core/debt_simplifier.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
@@ -13,6 +14,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 const _kMonthNames = [
   'Jan',
@@ -105,6 +107,35 @@ class SharedGroupDetailsScreen extends StatelessWidget {
     ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
   }
 
+  /// Who myUid owes / is owed by in this group, by name — resolved via
+  /// each uid's own user doc since other members may not be in my local
+  /// friends list. Positive = they owe me, negative = I owe them.
+  Future<Map<String, double>> _counterpartsFor(
+    List<Bill> bills,
+    String myUid,
+  ) async {
+    final netBalanceByUid = <String, double>{};
+    for (final bill in bills) {
+      for (final uid in bill.participantUids) {
+        netBalanceByUid[uid] =
+            (netBalanceByUid[uid] ?? 0) + bill.balanceForUid(uid);
+      }
+    }
+
+    final myDebts = simplifyDebts(
+      netBalanceByUid,
+    ).where((d) => d.fromUid == myUid || d.toUid == myUid).toList();
+
+    final result = <String, double>{};
+    for (final debt in myDebts) {
+      final otherUid = debt.fromUid == myUid ? debt.toUid : debt.fromUid;
+      final name = await FriendService.getUserName(otherUid);
+      final signed = debt.fromUid == myUid ? -debt.amount : debt.amount;
+      result[name] = (result[name] ?? 0) + signed;
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
@@ -133,12 +164,14 @@ class SharedGroupDetailsScreen extends StatelessWidget {
           }
 
           if (group.settleUpDay != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              final counterparts = await _counterpartsFor(bills, myUid);
               LocalNotificationService.scheduleMonthlySettleReminder(
                 groupId: group.id,
                 groupName: group.name,
                 day: group.settleUpDay!,
                 myNetBalance: net,
+                counterparts: counterparts,
               );
             });
           }
@@ -403,7 +436,7 @@ class _SharedBillRow extends StatelessWidget {
     final label = isSettled ? 'settled' : (youPaid ? 'get' : 'pay');
     final amountColor = isSettled
         ? AppColors.textSecondary
-        : (youPaid ? AppColors.success : AppColors.warning);
+        : (youPaid ? AppColors.success : AppColors.error);
 
     final icon = _iconFor(bill.title);
     final iconBg = _iconBgFor(bill.title);
@@ -467,7 +500,7 @@ class _SharedBillRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Your share ₹${myShare.toStringAsFixed(0)}',
+                  'Your share ${AppCurrency.symbol}${myShare.toStringAsFixed(0)}',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -484,7 +517,9 @@ class _SharedBillRow extends StatelessWidget {
                 style: GoogleFonts.inter(fontSize: 11, color: amountColor),
               ),
               Text(
-                isSettled ? '₹0' : '₹${remaining.toStringAsFixed(2)}',
+                isSettled
+                    ? '${AppCurrency.symbol}0'
+                    : '${AppCurrency.symbol}${remaining.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

@@ -15,6 +15,7 @@ import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_bill/widgets/form_components.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 enum SplitMethod { equal, custom }
 
@@ -645,7 +646,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
             const SizedBox(height: 8),
             AddBillField(
               controller: _amountController,
-              hint: '₹0.00',
+              hint: '${AppCurrency.symbol}0.00',
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -850,7 +851,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
                         flex: 3,
                         child: AddBillField(
                           controller: _customAmountControllers[id]!,
-                          hint: '₹0.00',
+                          hint: '${AppCurrency.symbol}0.00',
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),

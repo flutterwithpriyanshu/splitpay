@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:splitpay/core/static_content.dart';
 import 'package:splitpay/core/profile_prefs.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
+import 'package:splitpay/core/app_currency.dart';
 import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/static_content_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
@@ -36,7 +37,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _darkMode = themeModeNotifier.value == ThemeMode.dark;
+    _loadCurrency();
     _loadProfile();
+  }
+
+  Future<void> _loadCurrency() async {
+    final label = await CurrencyPrefs.getLabel();
+    if (mounted) setState(() => _currency = label);
   }
 
   Future<void> _loadProfile() async {
@@ -120,9 +127,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showCurrencyPicker() {
     _showOptionSheet(
       title: 'Currency',
-      options: const ['INR (₹)', 'USD (\$)', 'EUR (€)', 'GBP (£)'],
+      options: kSupportedCurrencies,
       current: _currency,
-      onSelect: (val) => setState(() => _currency = val),
+      onSelect: (val) {
+        setState(() => _currency = val);
+        CurrencyPrefs.setLabel(val);
+      },
     );
   }
 

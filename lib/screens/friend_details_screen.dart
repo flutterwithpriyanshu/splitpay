@@ -12,6 +12,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/friend_details/widgets/bill_tile.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 enum PaymentMethod { cash, upi }
 
@@ -86,8 +87,8 @@ class FriendDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     youOwe
-                        ? 'Pay ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
-                        : 'Get ₹${outstanding.toStringAsFixed(0)} from ${friend.name}',
+                        ? 'Pay ${friend.name} ${AppCurrency.symbol}${outstanding.toStringAsFixed(0)}'
+                        : 'Get ${AppCurrency.symbol}${outstanding.toStringAsFixed(0)} from ${friend.name}',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -171,7 +172,7 @@ class FriendDetailsScreen extends StatelessWidget {
                       if (val > outstanding + 0.01) {
                         showAppToast(
                           context,
-                          'Amount cannot exceed ₹${outstanding.toStringAsFixed(0)}',
+                          'Amount cannot exceed ${AppCurrency.symbol}${outstanding.toStringAsFixed(0)}',
                         );
                         return;
                       }
@@ -311,7 +312,7 @@ class FriendDetailsScreen extends StatelessWidget {
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Did the UPI payment of ₹${result.amount.toStringAsFixed(0)} go through?',
+          'Did the UPI payment of ${AppCurrency.symbol}${result.amount.toStringAsFixed(0)} go through?',
           style: GoogleFonts.inter(
             fontSize: 13,
             color: AppColors.textSecondary,
@@ -414,8 +415,8 @@ class FriendDetailsScreen extends StatelessWidget {
                 final balanceText = balance == 0
                     ? 'Settled up'
                     : youOwe
-                    ? 'Pay ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
-                    : 'Get ₹${outstanding.toStringAsFixed(0)} from ${friend.name}';
+                    ? 'Pay ${friend.name} ${AppCurrency.symbol}${outstanding.toStringAsFixed(0)}'
+                    : 'Get ${AppCurrency.symbol}${outstanding.toStringAsFixed(0)} from ${friend.name}';
                 final balanceColor = balance == 0
                     ? AppColors.textSecondary
                     : youOwe
@@ -570,58 +571,59 @@ class FriendDetailsScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                      child: SizedBox(
-                        height: 52,
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: balance == 0
-                              ? null
-                              : () async {
-                                  final result = await _showSettleSheet(
-                                    context,
-                                    outstanding: outstanding,
-                                    youOwe: youOwe,
-                                  );
-                                  if (result == null) return;
-
-                                  if (result.method == PaymentMethod.cash) {
-                                    await _recordSettlement(
+                    if (youOwe)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        child: SizedBox(
+                          height: 52,
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: balance == 0
+                                ? null
+                                : () async {
+                                    final result = await _showSettleSheet(
                                       context,
-                                      entered: result.amount,
+                                      outstanding: outstanding,
+                                      youOwe: youOwe,
+                                    );
+                                    if (result == null) return;
+
+                                    if (result.method == PaymentMethod.cash) {
+                                      await _recordSettlement(
+                                        context,
+                                        entered: result.amount,
+                                        youOwe: youOwe,
+                                        outstanding: outstanding,
+                                      );
+                                      return;
+                                    }
+
+                                    await _handleUpiSettlement(
+                                      context,
+                                      result: result,
                                       youOwe: youOwe,
                                       outstanding: outstanding,
                                     );
-                                    return;
-                                  }
-
-                                  await _handleUpiSettlement(
-                                    context,
-                                    result: result,
-                                    youOwe: youOwe,
-                                    outstanding: outstanding,
-                                  );
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            disabledBackgroundColor: AppColors.textSecondary
-                                .withOpacity(0.3),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              disabledBackgroundColor: AppColors.textSecondary
+                                  .withOpacity(0.3),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            'Settle Up',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                            child: Text(
+                              'Settle Up',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 );
               },

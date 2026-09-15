@@ -12,6 +12,7 @@ import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 /// Bottom-nav "Friends" screen — your friend list with live balances
 /// (same data as ManageFriendsScreen, shown inline instead of as a
@@ -406,10 +407,12 @@ class _FriendsTab extends StatelessWidget {
                   balanceText = 'Settled up';
                   balanceColor = AppColors.textSecondary;
                 } else if (balance > 0) {
-                  balanceText = 'Get ₹${balance.abs().toStringAsFixed(0)}';
+                  balanceText =
+                      'Get ${AppCurrency.symbol}${balance.abs().toStringAsFixed(0)}';
                   balanceColor = AppColors.success;
                 } else {
-                  balanceText = 'Pay ₹${balance.abs().toStringAsFixed(0)}';
+                  balanceText =
+                      'Pay ${AppCurrency.symbol}${balance.abs().toStringAsFixed(0)}';
                   balanceColor = AppColors.error;
                 }
 

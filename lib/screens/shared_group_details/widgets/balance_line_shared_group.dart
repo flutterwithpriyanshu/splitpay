@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class SharedGroupBalanceLine extends StatelessWidget {
   const SharedGroupBalanceLine({required this.net, super.key});
@@ -17,10 +18,10 @@ class SharedGroupBalanceLine extends StatelessWidget {
       text = 'Settled up';
       color = AppColors.textSecondary;
     } else if (net > 0) {
-      text = 'Get ₹${net.toStringAsFixed(2)}';
+      text = 'Get ${AppCurrency.symbol}${net.toStringAsFixed(2)}';
       color = AppColors.success;
     } else {
-      text = 'Pay ₹${(-net).toStringAsFixed(2)}';
+      text = 'Pay ${AppCurrency.symbol}${(-net).toStringAsFixed(2)}';
       color = AppColors.warning;
     }
 

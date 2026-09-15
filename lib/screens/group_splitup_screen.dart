@@ -5,6 +5,7 @@ import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class GroupSplitupScreen extends StatelessWidget {
   const GroupSplitupScreen({required this.group, super.key});
@@ -69,7 +70,7 @@ class _MemberSplitRow extends StatelessWidget {
         ? AppColors.textSecondary
         : net > 0
         ? AppColors.success
-        : AppColors.warning;
+        : AppColors.error;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
@@ -95,8 +96,8 @@ class _MemberSplitRow extends StatelessWidget {
             net.abs() <= 0.009
                 ? 'Settled'
                 : net > 0
-                ? 'Get ₹${net.toStringAsFixed(2)}'
-                : 'Pay ₹${(-net).toStringAsFixed(2)}',
+                ? 'Get ${AppCurrency.symbol}${net.toStringAsFixed(2)}'
+                : 'Pay ${AppCurrency.symbol}${(-net).toStringAsFixed(2)}',
             style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.w700,

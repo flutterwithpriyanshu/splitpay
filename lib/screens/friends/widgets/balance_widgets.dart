@@ -5,6 +5,7 @@ import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class FriendsGroupNetListener extends StatelessWidget {
   const FriendsGroupNetListener({
@@ -69,10 +70,10 @@ class FriendsGroupNetListener extends StatelessWidget {
           subtitle = 'Settled up';
           color = AppColors.textSecondary;
         } else if (net > 0) {
-          subtitle = 'Get ₹${net.toStringAsFixed(2)}';
+          subtitle = 'Get ${AppCurrency.symbol}${net.toStringAsFixed(2)}';
           color = AppColors.success;
         } else {
-          subtitle = 'Pay ₹${(-net).toStringAsFixed(2)}';
+          subtitle = 'Pay ${AppCurrency.symbol}${(-net).toStringAsFixed(2)}';
           color = AppColors.warning;
         }
 

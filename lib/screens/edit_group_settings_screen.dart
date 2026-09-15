@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/model/group.dart';
+import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
@@ -141,15 +142,37 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
     }
   }
 
+  /// True only when every bill tagged to this group has zero outstanding
+  /// balance for every participant — i.e. the whole group is settled up.
+  Future<bool> _isGroupFullySettled() async {
+    final bills = await BillService.streamGroupBills(widget.group.id).first;
+    return bills.every(
+      (bill) => bill.participantUids.every(
+        (uid) => bill.remainingForUid(uid) <= 0.009,
+      ),
+    );
+  }
+
   Future<void> _deleteGroup() async {
+    final settled = await _isGroupFullySettled();
+    if (!settled) {
+      if (mounted) {
+        showAppToast(
+          context,
+          'Everyone must settle up before the group can be deleted',
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Delete group?'),
         content: const Text(
-          'This removes the group for everyone in it. Bills already added '
-          'stay on each friend\'s individual balance.',
+          'Everyone is settled up. This removes the group for all members '
+          '— bills already added stay on each friend\'s individual balance.',
         ),
         actions: [
           TextButton(

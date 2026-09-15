@@ -8,6 +8,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/screens/edit_bill/widgets/form_components.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class EditBillScreen extends StatefulWidget {
   final Bill bill;
@@ -303,7 +304,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
             const SizedBox(height: 8),
             AddBillField(
               controller: _amountController,
-              hint: '₹0.00',
+              hint: '${AppCurrency.symbol}0.00',
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -455,7 +456,7 @@ class _EditBillScreenState extends State<EditBillScreen> {
                         flex: 3,
                         child: AddBillField(
                           controller: _customAmountControllers[id]!,
-                          hint: '₹0.00',
+                          hint: '${AppCurrency.symbol}0.00',
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),

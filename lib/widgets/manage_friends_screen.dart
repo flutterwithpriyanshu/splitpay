@@ -6,6 +6,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class ManageFriendsScreen extends StatelessWidget {
   const ManageFriendsScreen({super.key});
@@ -145,11 +146,11 @@ class ManageFriendsScreen extends StatelessWidget {
                             balanceColor = AppColors.textSecondary;
                           } else if (balance > 0) {
                             balanceText =
-                                'Get ₹${balance.abs().toStringAsFixed(0)}';
+                                'Get ${AppCurrency.symbol}${balance.abs().toStringAsFixed(0)}';
                             balanceColor = AppColors.success;
                           } else {
                             balanceText =
-                                'Pay ₹${balance.abs().toStringAsFixed(0)}';
+                                'Pay ${AppCurrency.symbol}${balance.abs().toStringAsFixed(0)}';
                             balanceColor = AppColors.error;
                           }
 

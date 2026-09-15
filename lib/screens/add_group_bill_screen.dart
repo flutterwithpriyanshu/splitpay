@@ -8,6 +8,7 @@ import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_date_format.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 /// Add-a-bill screen for a group MEMBER (not the group owner).
 ///
@@ -109,7 +110,7 @@ class _AddGroupBillScreenState extends State<AddGroupBillScreen> {
       if ((total - amount).abs() > 0.01) {
         showAppToast(
           context,
-          'Custom amounts (₹${total.toStringAsFixed(2)}) must add up to ₹${amount.toStringAsFixed(2)}',
+          'Custom amounts (${AppCurrency.symbol}${total.toStringAsFixed(2)}) must add up to ${AppCurrency.symbol}${amount.toStringAsFixed(2)}',
         );
         return;
       }
@@ -188,7 +189,9 @@ class _AddGroupBillScreenState extends State<AddGroupBillScreen> {
                     decimal: true,
                   ),
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(hintText: 'Amount (₹)'),
+                  decoration: InputDecoration(
+                    hintText: 'Amount (${AppCurrency.symbol})',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
@@ -269,7 +272,7 @@ class _AddGroupBillScreenState extends State<AddGroupBillScreen> {
                             style: GoogleFonts.inter(fontSize: 13),
                           ),
                           Text(
-                            '₹${each.toStringAsFixed(2)}',
+                            '${AppCurrency.symbol}${each.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(fontSize: 13),
                           ),
                         ],
@@ -296,7 +299,9 @@ class _AddGroupBillScreenState extends State<AddGroupBillScreen> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              decoration: const InputDecoration(hintText: '₹0'),
+                              decoration: InputDecoration(
+                                hintText: '${AppCurrency.symbol}0',
+                              ),
                             ),
                           ),
                         ],

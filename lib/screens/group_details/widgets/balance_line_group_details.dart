@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class GroupBalanceLine extends StatelessWidget {
   const GroupBalanceLine({required this.net, required this.members, super.key});
@@ -21,13 +22,13 @@ class GroupBalanceLine extends StatelessWidget {
       color = AppColors.textSecondary;
     } else if (net > 0) {
       text = other != null
-          ? 'Get ₹${net.toStringAsFixed(2)} from $other'
-          : 'Get ₹${net.toStringAsFixed(2)}';
+          ? 'Get ${AppCurrency.symbol}${net.toStringAsFixed(2)} from $other'
+          : 'Get ${AppCurrency.symbol}${net.toStringAsFixed(2)}';
       color = AppColors.success;
     } else {
       text = other != null
-          ? 'Pay $other ₹${(-net).toStringAsFixed(2)}'
-          : 'Pay ₹${(-net).toStringAsFixed(2)}';
+          ? 'Pay $other ${AppCurrency.symbol}${(-net).toStringAsFixed(2)}'
+          : 'Pay ${AppCurrency.symbol}${(-net).toStringAsFixed(2)}';
       color = AppColors.warning;
     }
 

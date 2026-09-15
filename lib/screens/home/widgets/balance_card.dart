@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class HomeBalanceCard extends StatelessWidget {
   const HomeBalanceCard({
@@ -44,7 +45,7 @@ class HomeBalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '${total < 0 ? '-' : ''}₹${total.abs().toStringAsFixed(0)}',
+            '${total < 0 ? '-' : ''}${AppCurrency.symbol}${total.abs().toStringAsFixed(0)}',
             style: GoogleFonts.inter(
               fontSize: 30,
               fontWeight: FontWeight.w700,
@@ -57,7 +58,7 @@ class HomeBalanceCard extends StatelessWidget {
               Expanded(
                 child: _BalanceStat(
                   label: 'Pay',
-                  amount: '₹${youOwe.toStringAsFixed(0)}',
+                  amount: '${AppCurrency.symbol}${youOwe.toStringAsFixed(0)}',
                   icon: Icons.arrow_upward_rounded,
                 ),
               ),
@@ -69,7 +70,7 @@ class HomeBalanceCard extends StatelessWidget {
               Expanded(
                 child: _BalanceStat(
                   label: 'Get',
-                  amount: '₹${youGet.toStringAsFixed(0)}',
+                  amount: '${AppCurrency.symbol}${youGet.toStringAsFixed(0)}',
                   icon: Icons.arrow_downward_rounded,
                 ),
               ),

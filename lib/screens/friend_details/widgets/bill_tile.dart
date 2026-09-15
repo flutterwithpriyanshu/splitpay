@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class FriendBillTile extends StatelessWidget {
   const FriendBillTile({
@@ -76,7 +77,7 @@ class FriendBillTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '₹${amount.toStringAsFixed(0)}',
+                '${AppCurrency.symbol}${amount.toStringAsFixed(0)}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

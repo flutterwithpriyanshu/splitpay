@@ -16,6 +16,7 @@ import 'package:splitpay/model/group.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/screens/home/widgets/home_header.dart';
 import 'package:splitpay/screens/home/widgets/balance_card.dart';
+import 'package:splitpay/core/app_currency.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -498,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '₹${amount.toStringAsFixed(0)}',
+                '${AppCurrency.symbol}${amount.toStringAsFixed(0)}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -509,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (isSettled ? AppColors.success : AppColors.warning)
+                  color: (isSettled ? AppColors.success : AppColors.error)
                       .withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -518,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: isSettled ? AppColors.success : AppColors.warning,
+                    color: isSettled ? AppColors.success : AppColors.error,
                   ),
                 ),
               ),

@@ -64,7 +64,7 @@ class BillDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
     final canManage = bill.ownerId == myUid;
-    final payerUid = bill.paidByUid;
+    final payerUid = bill.paidByUid ?? bill.ownerId;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -190,7 +190,7 @@ class BillDetailScreen extends StatelessWidget {
                             children: [
                               TextSpan(text: '$name '),
                               TextSpan(
-                                text: isPayer ? 'paid' : 'owes',
+                                text: isPayer ? 'paid' : 'get',
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
@@ -202,7 +202,9 @@ class BillDetailScreen extends StatelessWidget {
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                                  color: isPayer
+                                      ? AppColors.success
+                                      : AppColors.error,
                                 ),
                               ),
                             ],
