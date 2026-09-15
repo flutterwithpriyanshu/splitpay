@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_toast.dart';
@@ -39,6 +40,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _darkMode = themeModeNotifier.value == ThemeMode.dark;
     _loadCurrency();
     _loadProfile();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final entry = _localeByLanguage.entries.firstWhere(
+        (e) => e.value.languageCode == context.locale.languageCode,
+        orElse: () => _localeByLanguage.entries.first,
+      );
+      if (mounted) setState(() => _language = entry.key);
+    });
   }
 
   Future<void> _loadCurrency() async {
@@ -94,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              'Logout',
+              'logout'.tr(),
               style: GoogleFonts.inter(
                 color: AppColors.error,
                 fontWeight: FontWeight.w600,
@@ -126,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showCurrencyPicker() {
     _showOptionSheet(
-      title: 'Currency',
+      title: 'currency'.tr(),
       options: kSupportedCurrencies,
       current: _currency,
       onSelect: (val) {
@@ -136,12 +144,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  static const _localeByLanguage = {
+    'English': Locale('en'),
+    'Hindi': Locale('hi'),
+    'Spanish': Locale('es'),
+    'French': Locale('fr'),
+  };
+
   void _showLanguagePicker() {
     _showOptionSheet(
-      title: 'Language',
+      title: 'language'.tr(),
       options: const ['English', 'Hindi', 'Spanish', 'French'],
       current: _language,
-      onSelect: (val) => setState(() => _language = val),
+      onSelect: (val) {
+        setState(() => _language = val);
+        final locale = _localeByLanguage[val];
+        if (locale != null) context.setLocale(locale);
+      },
     );
   }
 
@@ -210,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
                 Text(
-                  'Settings',
+                  'settings'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -330,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SettingsSectionTitle('Preferences'),
             SettingsSwitchTile(
               icon: Icons.dark_mode_rounded,
-              label: 'Dark Mode',
+              label: 'dark_mode'.tr(),
               value: _darkMode,
               onChanged: (val) {
                 setState(() => _darkMode = val);
@@ -341,13 +360,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SettingsTile(
               icon: Icons.currency_exchange_rounded,
-              label: 'Currency',
+              label: 'currency'.tr(),
               trailing: _currency,
               onTap: _showCurrencyPicker,
             ),
             SettingsTile(
               icon: Icons.language_rounded,
-              label: 'Language',
+              label: 'language'.tr(),
               trailing: _language,
               onTap: _showLanguagePicker,
             ),
@@ -402,7 +421,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () async {
                 // Replace with your real Play Store URL once published
                 final uri = Uri.parse(
-                  'https://play.google.com/store/apps/details?id=com.example.splitpay',
+                  'https://play.google.com/store/apps/details?id=com.SplitPay.app',
                 );
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -424,7 +443,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 child: Text(
-                  'Logout',
+                  'logout'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,

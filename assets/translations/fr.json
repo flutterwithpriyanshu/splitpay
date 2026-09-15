@@ -1,0 +1,17 @@
+{
+  "settings": "Paramètres",
+  "currency": "Devise",
+  "language": "Langue",
+  "dark_mode": "Mode sombre",
+  "logout": "Déconnexion",
+  "delete_group": "supprimer le groupe",
+  "delete_group_q": "Supprimer le groupe ?",
+  "cancel": "Annuler",
+  "save_changes": "Enregistrer",
+  "groups": "Groupes",
+  "friends": "Amis",
+  "home": "Accueil",
+  "wallet": "Portefeuille",
+  "settle_up": "Régler les comptes",
+  "add_a_person": "Ajouter une personne"
+}

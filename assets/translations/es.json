@@ -1,0 +1,17 @@
+{
+  "settings": "Configuración",
+  "currency": "Moneda",
+  "language": "Idioma",
+  "dark_mode": "Modo oscuro",
+  "logout": "Cerrar sesión",
+  "delete_group": "eliminar grupo",
+  "delete_group_q": "¿Eliminar grupo?",
+  "cancel": "Cancelar",
+  "save_changes": "Guardar cambios",
+  "groups": "Grupos",
+  "friends": "Amigos",
+  "home": "Inicio",
+  "wallet": "Billetera",
+  "settle_up": "Saldar cuentas",
+  "add_a_person": "Añadir persona"
+}

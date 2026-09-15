@@ -1,0 +1,17 @@
+{
+  "settings": "Settings",
+  "currency": "Currency",
+  "language": "Language",
+  "dark_mode": "Dark Mode",
+  "logout": "Logout",
+  "delete_group": "delete group",
+  "delete_group_q": "Delete group?",
+  "cancel": "Cancel",
+  "save_changes": "Save changes",
+  "groups": "Groups",
+  "friends": "Friends",
+  "home": "Home",
+  "wallet": "Wallet",
+  "settle_up": "Settle Up",
+  "add_a_person": "Add a person"
+}

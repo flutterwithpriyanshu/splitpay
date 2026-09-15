@@ -1,0 +1,17 @@
+{
+  "settings": "सेटिंग्स",
+  "currency": "मुद्रा",
+  "language": "भाषा",
+  "dark_mode": "डार्क मोड",
+  "logout": "लॉग आउट",
+  "delete_group": "समूह हटाएं",
+  "delete_group_q": "समूह हटाएं?",
+  "cancel": "रद्द करें",
+  "save_changes": "बदलाव सहेजें",
+  "groups": "समूह",
+  "friends": "दोस्त",
+  "home": "होम",
+  "wallet": "वॉलेट",
+  "settle_up": "हिसाब चुकाएं",
+  "add_a_person": "व्यक्ति जोड़ें"
+}

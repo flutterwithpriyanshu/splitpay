@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,7 +29,20 @@ void main() async {
   await LocalNotificationService.init();
   await FcmService.init();
   await CurrencyPrefs.load();
-  runApp(const SplitPayApp());
+  await EasyLocalization.ensureInitialized();
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [
+        Locale('en'),
+        Locale('hi'),
+        Locale('es'),
+        Locale('fr'),
+      ],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('en'),
+      child: const SplitPayApp(),
+    ),
+  );
 }
 
 class SplitPayApp extends StatefulWidget {
@@ -84,6 +98,9 @@ class _SplitPayAppState extends State<SplitPayApp> {
             return MaterialApp(
               title: 'SplitPay',
               debugShowCheckedModeBanner: false,
+              localizationsDelegates: context.localizationDelegates,
+              supportedLocales: context.supportedLocales,
+              locale: context.locale,
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
               themeMode: mode,
