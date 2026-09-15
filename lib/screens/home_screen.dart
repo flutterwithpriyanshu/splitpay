@@ -128,8 +128,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         double youOwe = 0;
                         double youGet = 0;
+                        // One net number per group (same sum group_details_
+                        // screen computes) — added once, not per bill, so
+                        // offsetting bills within a group don't leak partial
+                        // amounts onto both Pay and Get.
+                        final groupNet = <String, double>{};
 
                         for (final bill in ownBills) {
+                          if (bill.groupId != null) {
+                            groupNet[bill.groupId!] =
+                                (groupNet[bill.groupId!] ?? 0) +
+                                bill.balanceForUid(myUid);
+                            continue;
+                          }
                           if (bill.paidBy == 'me') {
                             for (final fid in bill.friendIds) {
                               final f = friendById[fid];
@@ -144,11 +155,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
 
                         for (final bill in sharedBills) {
+                          if (bill.groupId != null) {
+                            groupNet[bill.groupId!] =
+                                (groupNet[bill.groupId!] ?? 0) +
+                                bill.balanceForUid(myUid);
+                            continue;
+                          }
                           final balance = bill.balanceForUid(myUid);
                           if (balance > 0) {
                             youGet += balance;
                           } else if (balance < 0) {
                             youOwe += balance.abs();
+                          }
+                        }
+
+                        for (final net in groupNet.values) {
+                          if (net > 0) {
+                            youGet += net;
+                          } else if (net < 0) {
+                            youOwe += net.abs();
                           }
                         }
 

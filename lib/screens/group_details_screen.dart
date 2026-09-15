@@ -338,7 +338,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${members.length} people',
+                  '${members.length + 1} people',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -453,17 +453,19 @@ class _Header extends StatelessWidget {
                 child: Row(
                   children: [
                     GroupHeaderPill(
-                      icon: Icons.calendar_today_rounded,
-                      label: group.settleUpDay == null
-                          ? 'Add settle up date'
-                          : 'Settle up on day ${group.settleUpDay}',
-                      onTap: () => _editSettleUpDate(context),
+                      icon: Icons.people_alt_rounded,
+                      label: '${members.length + 1} people',
+                      onTap: () => _showMembers(context),
                     ),
                     const SizedBox(width: 10),
-                    GroupHeaderPill(
-                      icon: Icons.people_alt_rounded,
-                      label: '${members.length} people',
-                      onTap: () => _showMembers(context),
+                    Flexible(
+                      child: GroupHeaderPill(
+                        icon: Icons.calendar_today_rounded,
+                        label: group.settleUpDay == null
+                            ? 'Add settle up date'
+                            : 'Settle up on day ${group.settleUpDay}',
+                        onTap: () => _editSettleUpDate(context),
+                      ),
                     ),
                   ],
                 ),
