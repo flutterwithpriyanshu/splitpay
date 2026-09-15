@@ -69,10 +69,10 @@ class FriendsGroupNetListener extends StatelessWidget {
           subtitle = 'Settled up';
           color = AppColors.textSecondary;
         } else if (net > 0) {
-          subtitle = 'you are owed ₹${net.toStringAsFixed(2)}';
+          subtitle = 'Get ₹${net.toStringAsFixed(2)}';
           color = AppColors.success;
         } else {
-          subtitle = 'you owe ₹${(-net).toStringAsFixed(2)}';
+          subtitle = 'Pay ₹${(-net).toStringAsFixed(2)}';
           color = AppColors.warning;
         }
 

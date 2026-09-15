@@ -53,14 +53,9 @@ class ManageFriendsScreen extends StatelessWidget {
     );
   }
 
-  /// Balance with a specific friend across all bills.
-  /// Positive = friend owes you. Negative = you owe friend.
   double _balanceForFriend(List<Bill> bills, Friend friend) {
     double balance = 0;
     for (final bill in bills) {
-      // Group bills are tallied on the group's own screens — skip them
-      // here so a linked friend's group share doesn't get double-counted
-      // into their separate 1:1 friend balance.
       if (bill.groupId != null) continue;
       if (friend.isLinked) {
         if (!bill.isParticipant(friend.linkedUid!)) continue;

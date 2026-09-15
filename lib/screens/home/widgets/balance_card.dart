@@ -56,7 +56,7 @@ class HomeBalanceCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _BalanceStat(
-                  label: 'You Owe',
+                  label: 'Pay',
                   amount: '₹${youOwe.toStringAsFixed(0)}',
                   icon: Icons.arrow_upward_rounded,
                 ),
@@ -68,7 +68,7 @@ class HomeBalanceCard extends StatelessWidget {
               ),
               Expanded(
                 child: _BalanceStat(
-                  label: 'You Get',
+                  label: 'Get',
                   amount: '₹${youGet.toStringAsFixed(0)}',
                   icon: Icons.arrow_downward_rounded,
                 ),

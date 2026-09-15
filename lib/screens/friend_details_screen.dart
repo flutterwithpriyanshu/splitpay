@@ -86,8 +86,8 @@ class FriendDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     youOwe
-                        ? 'You owe ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
-                        : '${friend.name} owes you ₹${outstanding.toStringAsFixed(0)}',
+                        ? 'Pay ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
+                        : 'Get ₹${outstanding.toStringAsFixed(0)} from ${friend.name}',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -412,10 +412,10 @@ class FriendDetailsScreen extends StatelessWidget {
                 final youOwe = balance < 0;
                 final outstanding = balance.abs();
                 final balanceText = balance == 0
-                    ? 'You are settled up'
+                    ? 'Settled up'
                     : youOwe
-                    ? 'You owe ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
-                    : '${friend.name} owes you ₹${outstanding.toStringAsFixed(0)}';
+                    ? 'Pay ${friend.name} ₹${outstanding.toStringAsFixed(0)}'
+                    : 'Get ₹${outstanding.toStringAsFixed(0)} from ${friend.name}';
                 final balanceColor = balance == 0
                     ? AppColors.textSecondary
                     : youOwe
