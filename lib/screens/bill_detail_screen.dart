@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/bill.dart';
-import 'package:splitpay/services/bill_service.dart';
+
 import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
