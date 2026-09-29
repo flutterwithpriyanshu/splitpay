@@ -14,10 +14,6 @@ import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
 import 'package:splitpay/screens/friends/widgets/balance_widgets.dart';
 
-/// Bottom-nav "Groups" screen. Real, persisted groups (see Group model /
-/// GroupService). Create a group with 2+ friends, then add bills straight
-/// into it from its details screen; those bills auto-split across the
-/// group's members. Split out of FriendsScreen so it's its own tab.
 class GroupsScreen extends StatelessWidget {
   const GroupsScreen({super.key});
 
@@ -172,7 +168,7 @@ class GroupsScreen extends StatelessWidget {
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
                                   itemCount: recentFour.length,
-                                  separatorBuilder: (_, __) =>
+                                  separatorBuilder: (_, _) =>
                                       const SizedBox(width: 14),
                                   itemBuilder: (context, index) {
                                     final friend = recentFour[index];

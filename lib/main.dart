@@ -91,7 +91,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<String>(
       valueListenable: currencySymbolNotifier,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         return ValueListenableBuilder<ThemeMode>(
           valueListenable: themeModeNotifier,
           builder: (context, mode, _) {

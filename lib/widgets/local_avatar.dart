@@ -62,17 +62,17 @@ class _LocalAvatarState extends State<LocalAvatar> {
         if (fallbackUrl != null) {
           return CircleAvatar(
             radius: radius,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            backgroundImage: NetworkImage(fallbackUrl!),
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            backgroundImage: NetworkImage(fallbackUrl),
           );
         }
         // Blank circle — no photo available.
         return CircleAvatar(
           radius: radius,
-          backgroundColor: AppColors.primary.withOpacity(0.1),
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
           child: Icon(
             Icons.person_rounded,
-            color: AppColors.primary.withOpacity(0.4),
+            color: AppColors.primary.withValues(alpha: 0.4),
             size: radius,
           ),
         );

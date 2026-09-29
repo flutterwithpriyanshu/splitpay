@@ -27,7 +27,7 @@ class HomeBalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -40,7 +40,7 @@ class HomeBalanceCard extends StatelessWidget {
             'Total Balance',
             style: GoogleFonts.inter(
               fontSize: 13,
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
           const SizedBox(height: 6),
@@ -65,7 +65,7 @@ class HomeBalanceCard extends StatelessWidget {
               Container(
                 width: 1,
                 height: 36,
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
               ),
               Expanded(
                 child: _BalanceStat(
@@ -99,7 +99,7 @@ class _BalanceStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white.withOpacity(0.9), size: 16),
+          Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 16),
           const SizedBox(width: 6),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,7 +108,7 @@ class _BalanceStat extends StatelessWidget {
                 label,
                 style: GoogleFonts.inter(
                   fontSize: 11,
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withValues(alpha: 0.85),
                 ),
               ),
               Text(

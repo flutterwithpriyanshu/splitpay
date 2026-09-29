@@ -11,6 +11,7 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
+import 'package:splitpay/screens/add_group_bill_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/screens/bill_detail_screen.dart';
 import 'package:splitpay/services/group_service.dart';
@@ -176,12 +177,13 @@ class GroupDetailsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          final onBillSaved = () => Navigator.of(context).pop();
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => AddBillScreen(
-                group: group,
-                onBillSaved: () => Navigator.of(context).pop(),
-              ),
+              builder: (_) =>
+                  group.ownerId == FirebaseAuth.instance.currentUser?.uid
+                  ? AddBillScreen(group: group, onBillSaved: onBillSaved)
+                  : AddGroupBillScreen(group: group, onBillSaved: onBillSaved),
             ),
           );
         },
@@ -192,8 +194,14 @@ class GroupDetailsScreen extends StatelessWidget {
         stream: FriendService.streamFriends(),
         builder: (context, friendSnapshot) {
           final friends = friendSnapshot.data ?? [];
+          final isOwner =
+              group.ownerId == FirebaseAuth.instance.currentUser?.uid;
           final members = friends
-              .where((f) => group.memberFriendIds.contains(f.id))
+              .where(
+                (f) => isOwner
+                    ? group.memberFriendIds.contains(f.id)
+                    : group.memberUids.contains(f.linkedUid),
+              )
               .toList();
 
           return Column(
@@ -292,6 +300,8 @@ class _Header extends StatelessWidget {
 
   const _Header({required this.group, required this.members});
 
+  bool get _isOwner => group.ownerId == FirebaseAuth.instance.currentUser?.uid;
+
   Future<void> _editSettleUpDate(BuildContext context) async {
     final picked = await showModalBottomSheet<int>(
       context: context,
@@ -326,6 +336,14 @@ class _Header extends StatelessWidget {
   }
 
   void _showMembers(BuildContext context) {
+    final knownMemberUids = members
+        .map((friend) => friend.linkedUid)
+        .whereType<String>()
+        .toSet();
+    final additionalMemberUids = group.memberUids
+        .where((uid) => uid != group.ownerId && !knownMemberUids.contains(uid))
+        .toList();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -412,6 +430,40 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                     ),
+                    ...additionalMemberUids.map(
+                      (uid) => SizedBox(
+                        width: 64,
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
+                              child: Icon(
+                                Icons.person_rounded,
+                                color: AppColors.primary.withValues(alpha: 0.4),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            FutureBuilder<String>(
+                              future: FriendService.getUserName(uid),
+                              builder: (context, snap) => Text(
+                                snap.data ?? '...',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -450,19 +502,23 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => EditGroupSettingsScreen(group: group),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.settings_outlined,
-                      color: Colors.white,
-                    ),
-                  ),
+                  if (_isOwner)
+                    IconButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                EditGroupSettingsScreen(group: group),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.settings_outlined,
+                        color: Colors.white,
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 48),
                 ],
               ),
               Padding(
@@ -490,9 +546,16 @@ class _Header extends StatelessWidget {
                       child: GroupHeaderPill(
                         icon: Icons.calendar_today_rounded,
                         label: group.settleUpDay == null
-                            ? 'Add settle up date'
+                            ? (_isOwner
+                                  ? 'Add settle up date'
+                                  : 'Settle up date not set')
                             : 'Settle up on day ${group.settleUpDay}',
-                        onTap: () => _editSettleUpDate(context),
+                        onTap: _isOwner
+                            ? () => _editSettleUpDate(context)
+                            : () => showAppToast(
+                                context,
+                                'Only the group owner can change the settle up date',
+                              ),
                       ),
                     ),
                   ],
@@ -778,7 +841,7 @@ class _BillRow extends StatelessWidget {
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(icon, color: color),

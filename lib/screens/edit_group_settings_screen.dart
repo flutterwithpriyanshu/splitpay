@@ -113,10 +113,12 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           child: Icon(
                             Icons.person_rounded,
-                            color: AppColors.primary.withOpacity(0.4),
+                            color: AppColors.primary.withValues(alpha: 0.4),
                           ),
                         ),
                         title: Text(
@@ -256,10 +258,10 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                 child: Icon(
                   Icons.person_rounded,
-                  color: AppColors.primary.withOpacity(0.4),
+                  color: AppColors.primary.withValues(alpha: 0.4),
                 ),
               ),
               const SizedBox(width: 12),
@@ -361,10 +363,12 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                       children: [
                         CircleAvatar(
                           radius: 18,
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           child: Icon(
                             Icons.person_rounded,
-                            color: AppColors.primary.withOpacity(0.4),
+                            color: AppColors.primary.withValues(alpha: 0.4),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -394,12 +398,12 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                               return;
                             }
                             if (!await _isMemberSettled(friend)) {
-                              if (mounted) {
-                                showAppToast(
-                                  context,
-                                  '${friend.name} must settle up before being removed',
-                                );
-                              }
+                              final currentContext = context;
+                              if (!mounted || !currentContext.mounted) return;
+                              showAppToast(
+                                currentContext,
+                                '${friend.name} must settle up before being removed',
+                              );
                               return;
                             }
                             if (mounted) {
@@ -443,7 +447,7 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                     ),
                     Switch(
                       value: _simplifyDebts,
-                      activeColor: Colors.white,
+                      activeThumbColor: Colors.white,
                       activeTrackColor: AppColors.primary,
                       onChanged: (value) =>
                           setState(() => _simplifyDebts = value),

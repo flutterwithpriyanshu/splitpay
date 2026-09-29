@@ -45,7 +45,7 @@ class _AuthScreenState extends State<AuthScreen> {
         opaque: true,
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
-        pageBuilder: (_, __, ___) => const _SecurityCheckOverlay(),
+        pageBuilder: (_, _, _) => const _SecurityCheckOverlay(),
       ),
     );
   }
@@ -157,7 +157,7 @@ class _AuthScreenState extends State<AuthScreen> {
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -315,7 +315,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   children: [
                     Expanded(
                       child: Divider(
-                        color: AppColors.textSecondary.withOpacity(0.2),
+                        color: AppColors.textSecondary.withValues(alpha: 0.2),
                       ),
                     ),
                     Padding(
@@ -330,7 +330,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     Expanded(
                       child: Divider(
-                        color: AppColors.textSecondary.withOpacity(0.2),
+                        color: AppColors.textSecondary.withValues(alpha: 0.2),
                       ),
                     ),
                   ],
@@ -345,7 +345,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       side: BorderSide(
-                        color: AppColors.textSecondary.withOpacity(0.3),
+                        color: AppColors.textSecondary.withValues(alpha: 0.3),
                       ),
                     ),
                     icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
@@ -449,7 +449,7 @@ class _SecurityCheckOverlayState extends State<_SecurityCheckOverlay> {
                       width: 88,
                       height: 88,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
+                        color: AppColors.primary.withValues(alpha: 0.12),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

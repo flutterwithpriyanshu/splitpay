@@ -119,37 +119,41 @@ class FriendDetailsScreen extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<PaymentMethod>(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'Cash',
-                            style: GoogleFonts.inter(fontSize: 13),
-                          ),
-                          value: PaymentMethod.cash,
-                          groupValue: method,
-                          onChanged: (v) => setSheetState(() => method = v!),
-                        ),
-                      ),
-                      // UPI only offered when this friend is linked — an
-                      // unlinked friend has no account, so there's no
-                      // real UPI ID to pay into.
-                      if (friend.isLinked)
+                  RadioGroup<PaymentMethod>(
+                    groupValue: method,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setSheetState(() => method = value);
+                      }
+                    },
+                    child: Row(
+                      children: [
                         Expanded(
                           child: RadioListTile<PaymentMethod>(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
-                              'UPI',
+                              'Cash',
                               style: GoogleFonts.inter(fontSize: 13),
                             ),
-                            value: PaymentMethod.upi,
-                            groupValue: method,
-                            onChanged: (v) => setSheetState(() => method = v!),
+                            value: PaymentMethod.cash,
                           ),
                         ),
-                    ],
+                        // UPI only offered when this friend is linked — an
+                        // unlinked friend has no account, so there's no
+                        // real UPI ID to pay into.
+                        if (friend.isLinked)
+                          Expanded(
+                            child: RadioListTile<PaymentMethod>(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                'UPI',
+                                style: GoogleFonts.inter(fontSize: 13),
+                              ),
+                              value: PaymentMethod.upi,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   if (!friend.isLinked) ...[
                     const SizedBox(height: 4),
@@ -211,6 +215,7 @@ class FriendDetailsScreen extends StatelessWidget {
     required double outstanding,
     String? note,
   }) async {
+    final safeContext = context;
     try {
       await TransactionService.addTransaction(
         personName: friend.name,
@@ -242,19 +247,17 @@ class FriendDetailsScreen extends StatelessWidget {
         );
       }
 
-      if (context.mounted) {
-        showAppToast(
-          context,
-          entered >= outstanding - 0.01
-              ? 'Settled up!'
-              : 'Partial payment recorded',
-          isError: false,
-        );
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(
+        safeContext,
+        entered >= outstanding - 0.01
+            ? 'Settled up!'
+            : 'Partial payment recorded',
+        isError: false,
+      );
     } catch (e) {
-      if (context.mounted) {
-        showAppToast(context, 'Settle Up failed: $e');
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(safeContext, 'Settle Up failed: $e');
     }
   }
 
@@ -267,14 +270,14 @@ class FriendDetailsScreen extends StatelessWidget {
     required bool youOwe,
     required double outstanding,
   }) async {
+    final safeContext = context;
     final upiInfo = await _fetchFriendUpiInfo();
     if (upiInfo == null) {
-      if (context.mounted) {
-        showAppToast(
-          context,
-          '${friend.name} hasn\'t set up a UPI ID yet. Try Cash instead.',
-        );
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(
+        safeContext,
+        '${friend.name} hasn\'t set up a UPI ID yet. Try Cash instead.',
+      );
       return;
     }
 
@@ -285,24 +288,22 @@ class FriendDetailsScreen extends StatelessWidget {
     );
 
     if (launchResult == UpiLaunchResult.noAppFound) {
-      if (context.mounted) {
-        showAppToast(
-          context,
-          'No UPI app found. Please install a UPI app or choose Cash.',
-        );
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(
+        safeContext,
+        'No UPI app found. Please install a UPI app or choose Cash.',
+      );
       return;
     }
     if (launchResult == UpiLaunchResult.failed) {
-      if (context.mounted) {
-        showAppToast(context, 'Could not open UPI app.');
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(safeContext, 'Could not open UPI app.');
       return;
     }
 
-    if (!context.mounted) return;
+    if (!safeContext.mounted) return;
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: safeContext,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
@@ -341,9 +342,8 @@ class FriendDetailsScreen extends StatelessWidget {
     );
 
     if (confirmed != true) {
-      if (context.mounted) {
-        showAppToast(context, 'Payment not recorded');
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(safeContext, 'Payment not recorded');
       return;
     }
 
@@ -485,7 +485,7 @@ class FriendDetailsScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
+                                  color: Colors.black.withValues(alpha: 0.04),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -525,8 +525,8 @@ class FriendDetailsScreen extends StatelessWidget {
                                 child: Container(
                                   height: 68,
                                   decoration: BoxDecoration(
-                                    color: AppColors.textSecondary.withOpacity(
-                                      0.12,
+                                    color: AppColors.textSecondary.withValues(
+                                      alpha: 0.12,
                                     ),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
@@ -608,7 +608,7 @@ class FriendDetailsScreen extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               disabledBackgroundColor: AppColors.textSecondary
-                                  .withOpacity(0.3),
+                                  .withValues(alpha: 0.3),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),

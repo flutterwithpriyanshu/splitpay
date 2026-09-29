@@ -47,7 +47,7 @@ class AuthForm extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -211,7 +211,7 @@ class AuthForm extends StatelessWidget {
                   ? Icon(
                       Icons.person_rounded,
                       size: 40,
-                      color: AppColors.textSecondary.withOpacity(0.4),
+                      color: AppColors.textSecondary.withValues(alpha: 0.4),
                     )
                   : null,
             ),
@@ -316,7 +316,7 @@ class AuthForm extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Divider(color: AppColors.textSecondary.withOpacity(0.2)),
+          child: Divider(color: AppColors.textSecondary.withValues(alpha: 0.2)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -329,7 +329,7 @@ class AuthForm extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Divider(color: AppColors.textSecondary.withOpacity(0.2)),
+          child: Divider(color: AppColors.textSecondary.withValues(alpha: 0.2)),
         ),
       ],
     );
@@ -344,7 +344,7 @@ class AuthForm extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          side: BorderSide(color: AppColors.textSecondary.withOpacity(0.3)),
+          side: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.3)),
         ),
         icon: const Icon(Icons.g_mobiledata_rounded, size: 24),
         label: Text(

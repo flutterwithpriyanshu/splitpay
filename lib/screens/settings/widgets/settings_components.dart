@@ -110,7 +110,7 @@ class SettingsSwitchTile extends StatelessWidget {
             child: Switch(
               value: value,
               onChanged: onChanged,
-              activeColor: Colors.white,
+              activeThumbColor: Colors.white,
               activeTrackColor: AppColors.primary,
               inactiveThumbColor: Colors.white,
               inactiveTrackColor: Colors.grey.shade700,
@@ -141,7 +141,7 @@ class SettingsSkeletonBox extends StatelessWidget {
       height: height,
       width: width,
       decoration: BoxDecoration(
-        color: AppColors.textSecondary.withOpacity(0.12),
+        color: AppColors.textSecondary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(radius),
       ),
     );

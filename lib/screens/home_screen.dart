@@ -276,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
               : ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: friends.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  separatorBuilder: (_, _) => const SizedBox(width: 16),
                   itemBuilder: (context, index) {
                     final friend = friends[index];
                     return GestureDetector(
@@ -334,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withOpacity(0.12),
+                  color: AppColors.textSecondary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -343,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 40,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: AppColors.textSecondary.withOpacity(0.12),
+                  color: AppColors.textSecondary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -476,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -488,7 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
@@ -537,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (isSettled ? AppColors.success : AppColors.error)
-                      .withOpacity(0.12),
+                      .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -565,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
       alignment: alignment,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Icon(icon, color: color),
@@ -580,7 +580,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             Icons.receipt_long_rounded,
             size: 56,
-            color: AppColors.textSecondary.withOpacity(0.4),
+            color: AppColors.textSecondary.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 12),
           Text(
@@ -613,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             height: 72,
             decoration: BoxDecoration(
-              color: AppColors.textSecondary.withOpacity(0.12),
+              color: AppColors.textSecondary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(18),
             ),
           ),

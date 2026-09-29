@@ -140,7 +140,7 @@ class WalletScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -153,7 +153,7 @@ class WalletScreen extends StatelessWidget {
             'wallet_balance'.tr(),
             style: GoogleFonts.inter(
               fontSize: 13,
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
             ),
           ),
           const SizedBox(height: 6),
@@ -184,7 +184,7 @@ class WalletScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -263,7 +263,7 @@ class WalletScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -275,8 +275,8 @@ class WalletScreen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: (isSent ? AppColors.error : AppColors.success).withOpacity(
-                0.1,
+              color: (isSent ? AppColors.error : AppColors.success).withValues(
+                alpha: 0.1,
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -332,7 +332,7 @@ class WalletScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color:
                       (tx.isCompleted ? AppColors.success : AppColors.warning)
-                          .withOpacity(0.12),
+                          .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -361,7 +361,7 @@ class WalletScreen extends StatelessWidget {
           Icon(
             Icons.swap_vert_rounded,
             size: 56,
-            color: AppColors.textSecondary.withOpacity(0.4),
+            color: AppColors.textSecondary.withValues(alpha: 0.4),
           ),
           const SizedBox(height: 12),
           Text(
@@ -419,7 +419,7 @@ class WalletScreen extends StatelessWidget {
       height: height,
       width: width,
       decoration: BoxDecoration(
-        color: AppColors.textSecondary.withOpacity(0.12),
+        color: AppColors.textSecondary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(radius),
       ),
     );

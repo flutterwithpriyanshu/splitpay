@@ -13,7 +13,7 @@ class IntroScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF96cdfa),
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
 

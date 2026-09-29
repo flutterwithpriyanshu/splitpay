@@ -153,34 +153,38 @@ class GroupSettleUpScreen extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: RadioListTile<_PaymentMethod>(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'Cash',
-                            style: GoogleFonts.inter(fontSize: 13),
-                          ),
-                          value: _PaymentMethod.cash,
-                          groupValue: method,
-                          onChanged: (v) => setSheetState(() => method = v!),
-                        ),
-                      ),
-                      if (upiAvailable)
+                  RadioGroup<_PaymentMethod>(
+                    groupValue: method,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setSheetState(() => method = value);
+                      }
+                    },
+                    child: Row(
+                      children: [
                         Expanded(
                           child: RadioListTile<_PaymentMethod>(
                             contentPadding: EdgeInsets.zero,
                             title: Text(
-                              'UPI',
+                              'Cash',
                               style: GoogleFonts.inter(fontSize: 13),
                             ),
-                            value: _PaymentMethod.upi,
-                            groupValue: method,
-                            onChanged: (v) => setSheetState(() => method = v!),
+                            value: _PaymentMethod.cash,
                           ),
                         ),
-                    ],
+                        if (upiAvailable)
+                          Expanded(
+                            child: RadioListTile<_PaymentMethod>(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                'UPI',
+                                style: GoogleFonts.inter(fontSize: 13),
+                              ),
+                              value: _PaymentMethod.upi,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   if (!upiAvailable) ...[
                     const SizedBox(height: 4),
@@ -243,6 +247,7 @@ class GroupSettleUpScreen extends StatelessWidget {
     required String otherName,
     String? note,
   }) async {
+    final safeContext = context;
     final youOwe = debt.fromUid == _myUid;
     try {
       await BillService.settleGroupPayment(
@@ -271,19 +276,17 @@ class GroupSettleUpScreen extends StatelessWidget {
         note: note,
       );
 
-      if (context.mounted) {
-        showAppToast(
-          context,
-          entered >= debt.amount - 0.01
-              ? 'Settled up!'
-              : 'Partial payment recorded',
-          isError: false,
-        );
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(
+        safeContext,
+        entered >= debt.amount - 0.01
+            ? 'Settled up!'
+            : 'Partial payment recorded',
+        isError: false,
+      );
     } catch (e) {
-      if (context.mounted) {
-        showAppToast(context, 'Settle Up failed: $e');
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(safeContext, 'Settle Up failed: $e');
     }
   }
 
@@ -297,14 +300,14 @@ class GroupSettleUpScreen extends StatelessWidget {
     required String otherName,
     required String receiverUid,
   }) async {
+    final safeContext = context;
     final upiInfo = await _fetchUpiInfoForUid(receiverUid);
     if (upiInfo == null) {
-      if (context.mounted) {
-        showAppToast(
-          context,
-          '$otherName hasn\'t set up a UPI ID yet. Try Cash instead.',
-        );
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(
+        safeContext,
+        '$otherName hasn\'t set up a UPI ID yet. Try Cash instead.',
+      );
       return;
     }
 
@@ -315,24 +318,22 @@ class GroupSettleUpScreen extends StatelessWidget {
     );
 
     if (launchResult == UpiLaunchResult.noAppFound) {
-      if (context.mounted) {
-        showAppToast(
-          context,
-          'No UPI app found. Please install a UPI app or choose Cash.',
-        );
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(
+        safeContext,
+        'No UPI app found. Please install a UPI app or choose Cash.',
+      );
       return;
     }
     if (launchResult == UpiLaunchResult.failed) {
-      if (context.mounted) {
-        showAppToast(context, 'Could not open UPI app.');
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(safeContext, 'Could not open UPI app.');
       return;
     }
 
-    if (!context.mounted) return;
+    if (!safeContext.mounted) return;
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: safeContext,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
@@ -371,9 +372,8 @@ class GroupSettleUpScreen extends StatelessWidget {
     );
 
     if (confirmed != true) {
-      if (context.mounted) {
-        showAppToast(context, 'Payment not recorded');
-      }
+      if (!safeContext.mounted) return;
+      showAppToast(safeContext, 'Payment not recorded');
       return;
     }
 
@@ -413,7 +413,7 @@ class GroupSettleUpScreen extends StatelessWidget {
             for (final uid in group.allMemberUids) {
               netByUid[uid] = bills.fold<double>(
                 0,
-                (sum, bill) => sum + bill.balanceForUid(uid),
+                (runningTotal, bill) => runningTotal + bill.balanceForUid(uid),
               );
             }
             debts = simplifyDebts(netByUid);
@@ -437,7 +437,7 @@ class GroupSettleUpScreen extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(20),
             itemCount: debts.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final debt = debts[index];
               final youOwe = debt.fromUid == _myUid;
@@ -508,12 +508,13 @@ class GroupSettleUpScreen extends StatelessWidget {
                         if (youOwe)
                           ElevatedButton(
                             onPressed: () async {
+                              final sheetContext = context;
                               final upiInfo = await _fetchUpiInfoForUid(
                                 youOwe ? debt.toUid : debt.fromUid,
                               );
-                              if (!context.mounted) return;
+                              if (!sheetContext.mounted) return;
                               final result = await _showSettleSheet(
-                                context,
+                                sheetContext,
                                 otherName: otherName,
                                 outstanding: debt.amount,
                                 youOwe: youOwe,
@@ -523,7 +524,7 @@ class GroupSettleUpScreen extends StatelessWidget {
 
                               if (result.method == _PaymentMethod.cash) {
                                 await _recordSettlement(
-                                  context,
+                                  sheetContext,
                                   debt: debt,
                                   entered: result.amount,
                                   otherName: otherName,
@@ -532,7 +533,7 @@ class GroupSettleUpScreen extends StatelessWidget {
                               }
 
                               await _handleUpiSettlement(
-                                context,
+                                sheetContext,
                                 debt: debt,
                                 result: result,
                                 otherName: otherName,
