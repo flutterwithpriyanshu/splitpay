@@ -90,6 +90,7 @@ class GroupService {
     await _assertOwner(groupId);
     await _db.collection('groups').doc(groupId).update({
       'settleUpDay': settleUpDay,
+      'lastSettleReminderMonth': FieldValue.delete(),
     });
   }
 

@@ -231,21 +231,6 @@ class GroupDetailsScreen extends StatelessWidget {
                           net += _netForBill(bill);
                         }
 
-                        // Keep this device's monthly settle-up reminder in sync
-                        // with the group's current settle-up day and my current
-                        // balance in this group. Cheap no-op if unchanged.
-                        if (currentGroup.settleUpDay != null) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            LocalNotificationService.scheduleMonthlySettleReminder(
-                              groupId: currentGroup.id,
-                              groupName: currentGroup.name,
-                              day: currentGroup.settleUpDay!,
-                              myNetBalance: net,
-                              counterparts: _counterpartsFor(bills, friends),
-                            );
-                          });
-                        }
-
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -345,12 +330,7 @@ class _Header extends StatelessWidget {
     }
 
     await GroupService.updateSettleUpDay(group.id, picked);
-    await LocalNotificationService.scheduleMonthlySettleReminder(
-      groupId: group.id,
-      groupName: group.name,
-      day: picked,
-      myNetBalance: 0,
-    );
+    await LocalNotificationService.cancelSettleReminder(group.id);
     if (context.mounted) {
       showAppToast(context, 'You\'ll be reminded every month on day $picked');
     }

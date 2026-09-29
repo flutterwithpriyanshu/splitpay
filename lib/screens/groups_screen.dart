@@ -8,7 +8,6 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/services/group_service.dart';
-import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
@@ -394,14 +393,6 @@ class GroupsScreen extends StatelessWidget {
                                         selectedMembers,
                                         settleUpDay: settleUpDay,
                                       );
-                                  if (settleUpDay != null) {
-                                    await LocalNotificationService.scheduleMonthlySettleReminder(
-                                      groupId: createdGroup.id,
-                                      groupName: createdGroup.name,
-                                      day: settleUpDay!,
-                                      myNetBalance: 0,
-                                    );
-                                  }
                                   if (sheetContext.mounted) {
                                     Navigator.pop(sheetContext);
                                   }

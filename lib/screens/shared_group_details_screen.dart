@@ -13,7 +13,6 @@ import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/tabs_row.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
-import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_currency.dart';
 
@@ -162,19 +161,6 @@ class SharedGroupDetailsScreen extends StatelessWidget {
           double net = 0;
           for (final bill in bills) {
             net += bill.balanceForUid(myUid);
-          }
-
-          if (group.settleUpDay != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              final counterparts = await _counterpartsFor(bills, myUid);
-              LocalNotificationService.scheduleMonthlySettleReminder(
-                groupId: group.id,
-                groupName: group.name,
-                day: group.settleUpDay!,
-                myNetBalance: net,
-                counterparts: counterparts,
-              );
-            });
           }
 
           return Column(

@@ -160,6 +160,20 @@ class LocalNotificationService {
 
     final scheduledDate = tz.TZDateTime.from(_nextOccurrence(day), tz.local);
 
+    // Android 12+ blocks exact alarms unless user grants SCHEDULE_EXACT_ALARM.
+    // Monthly reminder doesn't need to-the-second precision → fall back to
+    // inexact mode instead of throwing `exact_alarms_not_permitted`.
+    final canExact =
+        await _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.canScheduleExactNotifications() ??
+        false;
+    final scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+
     await _plugin.zonedSchedule(
       id: _settleReminderId(groupId),
       title: 'Settle up reminder',
@@ -169,7 +183,7 @@ class LocalNotificationService {
         android: _settleChannel,
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
       matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
     );
   }
