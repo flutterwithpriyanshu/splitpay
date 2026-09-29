@@ -84,6 +84,15 @@ class GroupService {
     });
   }
 
+  /// Throws unless the signed-in user owns the group. Members can read a
+  /// group but never change who is in it.
+  static Future<void> _assertOwner(String groupId) async {
+    final doc = await _db.collection('groups').doc(groupId).get();
+    if (doc.data()?['ownerId'] != _uid) {
+      throw StateError('Only the group owner can change members');
+    }
+  }
+
   /// Bundles every field the Edit Group Settings screen can touch into one
   /// write — name, members, group type, and the simplify-debts toggle.
   static Future<void> updateSettings(
@@ -92,13 +101,14 @@ class GroupService {
     required List<Friend> members,
     required String groupType,
     required bool simplifyDebts,
-  }) {
+  }) async {
+    await _assertOwner(groupId);
     final memberFriendIds = members.map((f) => f.id).toList();
     final memberUids = members
         .where((f) => f.isLinked)
         .map((f) => f.linkedUid!)
         .toList();
-    return _db.collection('groups').doc(groupId).update({
+    await _db.collection('groups').doc(groupId).update({
       'name': name,
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
@@ -107,19 +117,22 @@ class GroupService {
     });
   }
 
-  static Future<void> updateMembers(String groupId, List<Friend> members) {
+  static Future<void> updateMembers(
+    String groupId,
+    List<Friend> members,
+  ) async {
+    await _assertOwner(groupId);
     final memberFriendIds = members.map((f) => f.id).toList();
     final memberUids = members
         .where((f) => f.isLinked)
         .map((f) => f.linkedUid!)
         .toList();
-    return _db.collection('groups').doc(groupId).update({
+    await _db.collection('groups').doc(groupId).update({
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
     });
   }
 
-  
   static Future<void> deleteGroup(String groupId) async {
     final billsSnap = await _db
         .collection('bills')

@@ -6,6 +6,7 @@ import 'package:splitpay/core/debt_simplifier.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
+import 'package:splitpay/screens/group_settle_up_screen.dart';
 import 'package:splitpay/screens/group_splitup_screen.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/balance_line_shared_group.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
@@ -186,9 +187,10 @@ class SharedGroupDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               SharedGroupTabsRow(
-                onSettleUp: () => showAppToast(
-                  context,
-                  'Open a friend from this group to settle up',
+                onSettleUp: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => GroupSettleUpScreen(group: group),
+                  ),
                 ),
                 onBalances: () => _showSimplifiedDebts(context, bills),
               ),
@@ -221,7 +223,7 @@ class _SharedHeader extends StatelessWidget {
   const _SharedHeader({required this.group});
 
   void _showMembers(BuildContext context) {
-    final uids = [group.ownerId, ...group.memberUids];
+    final uids = group.allMemberUids;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -352,7 +354,7 @@ class _SharedHeader extends StatelessWidget {
                   children: [
                     SharedGroupHeaderPill(
                       icon: Icons.people_alt_rounded,
-                      label: '${group.memberUids.length + 1} people',
+                      label: '${group.allMemberUids.length} people',
                       onTap: () => _showMembers(context),
                     ),
                     if (group.settleUpDay != null) ...[

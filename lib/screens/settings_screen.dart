@@ -8,7 +8,6 @@ import 'package:splitpay/core/static_content.dart';
 import 'package:splitpay/core/profile_prefs.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
 import 'package:splitpay/core/app_currency.dart';
-import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/static_content_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/edit_profile_screen.dart';
@@ -115,19 +114,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (confirmed == true) {
       await FcmService.clearToken();
       await ProfilePrefs.clear();
-      await FirebaseAuth.instance.signOut();
+      // Pop back to the root route FIRST. The root StreamBuilder in
+      // main.dart lives there and swaps to AuthScreen on signOut, and
+      // back to MainShell / CompleteProfileScreen on the next login.
+      // Never push AuthScreen manually — that buries the StreamBuilder
+      // and the next login gets stuck on the old AuthScreen.
       if (mounted) {
-        // The auth flow doesn't rely on the root StreamBuilder after the
-        // first launch — every screen up to MainShell got here via
-        // pushAndRemoveUntil, which already cleared that route out of the
-        // stack. So signOut() alone has nothing left to redirect anything.
-        // Push AuthScreen directly and wipe the stack under it, so there's
-        // no back-button path into the signed-out MainShell.
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AuthScreen()),
-          (route) => false,
-        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
+      await FirebaseAuth.instance.signOut();
     }
   }
 

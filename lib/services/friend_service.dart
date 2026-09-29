@@ -79,6 +79,13 @@ class FriendService {
     return doc.data()?['fullName'] ?? 'Someone';
   }
 
+  /// Phone number of any user by uid — shown next to the group owner
+  /// in group member lists.
+  static Future<String> getUserPhone(String uid) async {
+    final doc = await _db.collection('users').doc(uid).get();
+    return doc.data()?['phoneNumber'] ?? '';
+  }
+
   /// Ensures [targetUid]'s friend list contains an entry representing
   /// the CURRENT signed-in user. If one already exists, does nothing.
   static Future<void> ensureReciprocalFriend(String targetUid) async {

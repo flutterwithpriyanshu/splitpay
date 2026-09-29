@@ -192,7 +192,6 @@ class GroupDetailsScreen extends StatelessWidget {
         stream: FriendService.streamFriends(),
         builder: (context, friendSnapshot) {
           final friends = friendSnapshot.data ?? [];
-          final friendById = {for (final f in friends) f.id: f};
           final members = friends
               .where((f) => group.memberFriendIds.contains(f.id))
               .toList();
@@ -342,7 +341,7 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${members.length} people',
+                  '${group.allMemberUids.length} people',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -350,45 +349,70 @@ class _Header extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (members.isEmpty)
-                  Text(
-                    'No members yet.',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
                 Wrap(
                   spacing: 16,
                   runSpacing: 12,
-                  children: members
-                      .map(
-                        (friend) => SizedBox(
-                          width: 64,
-                          child: Column(
-                            children: [
-                              LocalAvatar(
-                                localKey: friend.id,
-                                isProfile: false,
-                                fallbackUrl: friend.avatarUrl,
-                                radius: 24,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                friend.name,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                            ],
+                  children: [
+                    // Owner first — always part of the group.
+                    SizedBox(
+                      width: 64,
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.1,
+                            ),
+                            child: Icon(
+                              Icons.person_rounded,
+                              color: AppColors.primary.withValues(alpha: 0.4),
+                              size: 24,
+                            ),
                           ),
+                          const SizedBox(height: 4),
+                          FutureBuilder<String>(
+                            future: FriendService.getUserName(group.ownerId),
+                            builder: (context, snap) => Text(
+                              '${snap.data ?? '...'} (owner)',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...members.map(
+                      (friend) => SizedBox(
+                        width: 64,
+                        child: Column(
+                          children: [
+                            LocalAvatar(
+                              localKey: friend.id,
+                              isProfile: false,
+                              fallbackUrl: friend.avatarUrl,
+                              radius: 24,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              friend.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -458,7 +482,7 @@ class _Header extends StatelessWidget {
                   children: [
                     GroupHeaderPill(
                       icon: Icons.people_alt_rounded,
-                      label: '${members.length} people',
+                      label: '${group.allMemberUids.length} people',
                       onTap: () => _showMembers(context),
                     ),
                     const SizedBox(width: 10),

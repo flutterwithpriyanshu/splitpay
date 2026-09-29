@@ -153,6 +153,19 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
     );
   }
 
+  /// A member is "clear" when their net balance across all group bills is
+  /// zero. An unlinked friend has no uid-based bills, so always clear.
+  Future<bool> _isMemberSettled(Friend friend) async {
+    final uid = friend.linkedUid;
+    if (uid == null) return true;
+    final bills = await BillService.streamGroupBills(widget.group.id).first;
+    double net = 0;
+    for (final bill in bills) {
+      net += bill.balanceForUid(uid);
+    }
+    return net.abs() <= 0.009;
+  }
+
   Future<void> _deleteGroup() async {
     final settled = await _isGroupFullySettled();
     if (!settled) {
@@ -204,7 +217,7 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
       showAppToast(context, 'Group name can\'t be empty');
       return;
     }
-    if (_memberFriendIds.length < 1) {
+    if (_memberFriendIds.isEmpty) {
       showAppToast(context, 'A group needs at least one member');
       return;
     }
@@ -226,6 +239,46 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Widget _ownerRow() {
+    return FutureBuilder<List<String>>(
+      future: Future.wait([
+        FriendService.getUserName(widget.group.ownerId),
+        FriendService.getUserPhone(widget.group.ownerId),
+      ]),
+      builder: (context, snap) {
+        final ownerName = snap.data?[0] ?? '...';
+        final ownerPhone = snap.data?[1] ?? '';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: Icon(
+                  Icons.person_rounded,
+                  color: AppColors.primary.withOpacity(0.4),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  ownerPhone.isEmpty
+                      ? '$ownerName (owner)'
+                      : '$ownerName ($ownerPhone) · owner',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -300,6 +353,7 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                _ownerRow(),
                 ...members.map(
                   (friend) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -331,7 +385,7 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                             size: 20,
                             color: AppColors.textSecondary,
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             if (members.length <= 1) {
                               showAppToast(
                                 context,
@@ -339,7 +393,20 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                               );
                               return;
                             }
-                            setState(() => _memberFriendIds.remove(friend.id));
+                            if (!await _isMemberSettled(friend)) {
+                              if (mounted) {
+                                showAppToast(
+                                  context,
+                                  '${friend.name} must settle up before being removed',
+                                );
+                              }
+                              return;
+                            }
+                            if (mounted) {
+                              setState(
+                                () => _memberFriendIds.remove(friend.id),
+                              );
+                            }
                           },
                         ),
                       ],
