@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:splitpay/core/app_toast.dart';
-import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/theme/app_colors.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -17,7 +16,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final _phoneController = TextEditingController();
+  final _phoneController = TextEditingController(text: '+91 ');
   final _otpController = TextEditingController();
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
@@ -57,11 +56,12 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _sendOtp() async {
-    final phone = normalizePhone(_phoneController.text.trim());
-    if (phone.length != 10) {
-      _showError('Enter a valid 10-digit phone number');
+    final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+      _showError('Enter a valid phone number with its country code');
       return;
     }
+    final phone = '+$phoneDigits';
     setState(() => _isLoading = true);
     _showSecurityOverlay();
     try {
@@ -202,8 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     keyboardType: TextInputType.phone,
                     style: GoogleFonts.inter(fontSize: 15),
                     decoration: InputDecoration(
-                      hintText: 'xxxxx xxxxx',
-                      prefixText: '+91 ',
+                      hintText: 'Country code and phone number',
                       filled: true,
                       fillColor: AppColors.background,
                       border: OutlineInputBorder(
@@ -303,6 +302,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         : () => setState(() {
                             _codeSent = false;
                             _otpController.clear();
+                            _verificationId = null;
+                            _resendToken = null;
                           }),
                     child: Text(
                       'Change phone number',
@@ -397,11 +398,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-/// Full-screen mask shown from tap of "Send OTP" until verifyPhoneNumber's
-/// verificationCompleted / verificationFailed / codeSent fires (or the
-/// catch block hits). Covers Android's silent-verification browser hop
-/// (reCAPTCHA fallback) so it reads as part of the app's own flow instead
-/// of a jarring tab switch.
+
 class _SecurityCheckOverlay extends StatefulWidget {
   const _SecurityCheckOverlay();
 
