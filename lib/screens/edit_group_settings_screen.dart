@@ -243,6 +243,132 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
     }
   }
 
+  Future<void> _leaveGroup() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final bills = await BillService.streamGroupBills(widget.group.id).first;
+    final netBalance = bills.fold<double>(
+      0,
+      (total, bill) => total + bill.balanceForUid(uid),
+    );
+    if (netBalance.abs() > 0.009) {
+      if (mounted) {
+        showAppToast(context, 'Settle your group balance before leaving');
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Leave group?'),
+        content: Text(
+          'You will no longer see ${widget.group.name} or its bills.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Leave', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await GroupService.leaveGroup(widget.group.id);
+      if (mounted) {
+        Navigator.of(context).pop();
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      if (mounted) showAppToast(context, error.toString());
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Widget _buildMemberSettings() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        title: Text(
+          'Group Settings',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          children: [
+            Text(
+              'GROUP MEMBERS',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...widget.group.allMemberUids.map(
+              (uid) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: AppColors.primary.withValues(alpha: 0.5),
+                  ),
+                ),
+                title: FutureBuilder<String>(
+                  future: FriendService.getUserName(uid),
+                  builder: (context, snapshot) => Text(
+                    uid == FirebaseAuth.instance.currentUser?.uid
+                        ? 'You'
+                        : snapshot.data ?? '...',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                subtitle: uid == widget.group.ownerId
+                    ? const Text('Owner')
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: _isSaving ? null : _leaveGroup,
+              icon: Icon(Icons.logout_rounded, color: AppColors.error),
+              label: Text(
+                'Leave group',
+                style: GoogleFonts.inter(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _ownerRow() {
     return FutureBuilder<List<String>>(
       future: Future.wait([
@@ -285,6 +411,10 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.group.ownerId != FirebaseAuth.instance.currentUser?.uid) {
+      return _buildMemberSettings();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

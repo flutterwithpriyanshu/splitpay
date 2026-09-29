@@ -94,6 +94,7 @@ class GroupSettleUpScreen extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
+      elevation: 0,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -215,6 +216,7 @@ class GroupSettleUpScreen extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -337,6 +339,7 @@ class GroupSettleUpScreen extends StatelessWidget {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
+        elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Confirm Payment',
@@ -543,6 +546,7 @@ class GroupSettleUpScreen extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
+                              elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),

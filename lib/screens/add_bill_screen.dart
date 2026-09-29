@@ -47,16 +47,48 @@ class _AddBillScreenState extends State<AddBillScreen> {
   final Map<String, TextEditingController> _customAmountControllers = {};
 
   bool _isSaving = false;
+  bool _loadingSharedGroupMembers = false;
+
+  bool get _isSharedGroupMember =>
+      widget.group != null &&
+      widget.group!.ownerId != FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    if (widget.group != null) {
+    if (_isSharedGroupMember) {
+      _loadingSharedGroupMembers = true;
+      _loadSharedGroupMembers();
+    } else if (widget.group != null) {
       _selectedFriendIds.addAll(widget.group!.memberFriendIds);
       for (final id in widget.group!.memberFriendIds) {
         _customAmountControllers[id] = TextEditingController();
       }
     }
+  }
+
+  Future<void> _loadSharedGroupMembers() async {
+    final group = widget.group!;
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+    final members = <Friend>[];
+    for (final uid in group.allMemberUids) {
+      if (uid == myUid) continue;
+      members.add(
+        Friend(
+          id: uid,
+          name: await FriendService.getUserName(uid),
+          avatarUrl: 'https://i.pravatar.cc/150?u=$uid',
+          linkedUid: uid,
+        ),
+      );
+    }
+    if (!mounted) return;
+    _liveFriends = members;
+    _selectedFriendIds.addAll(members.map((friend) => friend.id));
+    for (final friend in members) {
+      _customAmountControllers[friend.id] = TextEditingController();
+    }
+    setState(() => _loadingSharedGroupMembers = false);
   }
 
   @override
@@ -481,7 +513,7 @@ class _AddBillScreenState extends State<AddBillScreen> {
       title: title,
       amount: amount,
       date: _selectedDate,
-      friendIds: _selectedFriendIds.toList(),
+      friendIds: _isSharedGroupMember ? [] : _selectedFriendIds.toList(),
       splitMethod: _splitMethod == SplitMethod.equal ? 'equal' : 'custom',
       customAmounts: customAmounts,
       myShare: myShare,
@@ -722,9 +754,13 @@ class _AddBillScreenState extends State<AddBillScreen> {
             StreamBuilder<List<Friend>>(
               stream: FriendService.streamFriends(),
               builder: (context, snapshot) {
-                if (snapshot.hasData) _liveFriends = snapshot.data!;
+                if (snapshot.hasData && !_isSharedGroupMember) {
+                  _liveFriends = snapshot.data!;
+                }
 
-                if (snapshot.connectionState == ConnectionState.waiting) {
+                if (_isSharedGroupMember
+                    ? _loadingSharedGroupMembers
+                    : snapshot.connectionState == ConnectionState.waiting) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Center(
@@ -737,7 +773,9 @@ class _AddBillScreenState extends State<AddBillScreen> {
                 // anyone just added via "Add Friend" for this one bill
                 // (already in _selectedFriendIds but not a group member),
                 // so their chip doesn't vanish right after adding them.
-                final visibleFriends = widget.group != null
+                final visibleFriends = _isSharedGroupMember
+                    ? _liveFriends
+                    : widget.group != null
                     ? _liveFriends
                           .where(
                             (f) =>

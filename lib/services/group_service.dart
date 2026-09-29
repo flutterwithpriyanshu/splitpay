@@ -62,11 +62,16 @@ class GroupService {
         .where((f) => f.isLinked)
         .map((f) => f.linkedUid!)
         .toList();
+    final memberFriendIdsByUid = {
+      for (final friend in members)
+        if (friend.isLinked) friend.linkedUid!: friend.id,
+    };
     final data = {
       'name': name,
       'ownerId': _uid,
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
+      'memberFriendIdsByUid': memberFriendIdsByUid,
       'createdAt': Timestamp.now(),
       'settleUpDay': settleUpDay,
     };
@@ -108,10 +113,15 @@ class GroupService {
         .where((f) => f.isLinked)
         .map((f) => f.linkedUid!)
         .toList();
+    final memberFriendIdsByUid = {
+      for (final friend in members)
+        if (friend.isLinked) friend.linkedUid!: friend.id,
+    };
     await _db.collection('groups').doc(groupId).update({
       'name': name,
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
+      'memberFriendIdsByUid': memberFriendIdsByUid,
       'groupType': groupType,
       'simplifyDebts': simplifyDebts,
     });
@@ -127,9 +137,44 @@ class GroupService {
         .where((f) => f.isLinked)
         .map((f) => f.linkedUid!)
         .toList();
+    final memberFriendIdsByUid = {
+      for (final friend in members)
+        if (friend.isLinked) friend.linkedUid!: friend.id,
+    };
     await _db.collection('groups').doc(groupId).update({
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
+      'memberFriendIdsByUid': memberFriendIdsByUid,
+    });
+  }
+
+  static Future<void> leaveGroup(String groupId) async {
+    final groupRef = _db.collection('groups').doc(groupId);
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(groupRef);
+      final data = snapshot.data();
+      if (data == null) throw StateError('Group not found');
+      if (data['ownerId'] == _uid) {
+        throw StateError('The group owner cannot leave the group');
+      }
+
+      final memberUids = List<String>.from(data['memberUids'] ?? []);
+      if (!memberUids.remove(_uid)) {
+        throw StateError('You are not a member of this group');
+      }
+
+      final memberFriendIds = List<String>.from(data['memberFriendIds'] ?? []);
+      final memberFriendIdsByUid = Map<String, String>.from(
+        data['memberFriendIdsByUid'] ?? {},
+      );
+      final friendId = memberFriendIdsByUid.remove(_uid);
+      if (friendId != null) memberFriendIds.remove(friendId);
+
+      transaction.update(groupRef, {
+        'memberUids': memberUids,
+        'memberFriendIds': memberFriendIds,
+        'memberFriendIdsByUid': memberFriendIdsByUid,
+      });
     });
   }
 

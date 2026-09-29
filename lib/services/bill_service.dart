@@ -64,14 +64,6 @@ class BillService {
         );
   }
 
-  /// All bills tagged with [groupId] that involve you — no matter who in
-  /// the group actually created the bill. Works because a bill's creator
-  /// is always included in their own `participantUids`, so "tagged with
-  /// this group AND I'm a participant" catches every group bill I'm part
-  /// of, whether I'm the group owner or just a member who added it.
-  ///
-  /// This is what lets ANY member add a bill to the group (not just the
-  /// owner) and have it show up for everyone in the group.
   static Stream<List<Bill>> streamGroupBills(String groupId) {
     return _db
         .collection('bills')
@@ -87,11 +79,6 @@ class BillService {
         );
   }
 
-  /// Push notifications for add/edit/delete/settle are handled entirely
-  /// server-side — a Cloud Functions trigger on `bills/{billId}` (create,
-  /// update, delete) reads `participantUids` off the doc and sends FCM to
-  /// every one of them (owner + friend + every group member), using each
-  /// user's `fcmToken` saved by FcmService. Nothing to call from here.
   static Future<void> addBill(Bill bill) async {
     await _db.collection('bills').add(bill.toFirestore(_uid));
   }
@@ -118,11 +105,6 @@ class BillService {
     });
   }
 
-  /// Applies a payment from [fromUid] toward [toUid], scoped to one group,
-  /// spreading it across their oldest group bills first — same idea as
-  /// [settlePartialForFriend] but for the uid-based side of the data model
-  /// (group bills use participantUids/sharesByUid/paidByUid, not friendIds).
-  /// Used by GroupSettleUpScreen for both the Cash and confirmed-UPI paths.
   static Future<void> settleGroupPayment({
     required String groupId,
     required String fromUid,
@@ -135,10 +117,18 @@ class BillService {
     final snap = await _db
         .collection('bills')
         .where('groupId', isEqualTo: groupId)
-        .orderBy('date')
+        .where('participantUids', arrayContains: _uid)
         .get();
 
-    for (final doc in snap.docs) {
+    // Sort client-side (oldest first) — avoids needing a composite index.
+    final docs = snap.docs.toList()
+      ..sort((a, b) {
+        final da = (a.data()['date'] as Timestamp?)?.toDate() ?? DateTime(0);
+        final db = (b.data()['date'] as Timestamp?)?.toDate() ?? DateTime(0);
+        return da.compareTo(db);
+      });
+
+    for (final doc in docs) {
       if (remainingToApply <= 0.009) break;
       final bill = Bill.fromFirestore(doc.id, doc.data());
       final payerUid = bill.paidByUid ?? bill.ownerId;
@@ -173,9 +163,6 @@ class BillService {
     await _db.collection('bills').doc(billId).delete();
   }
 
-  /// Applies a custom payment amount toward your balance with [friendId],
-  /// spreading it across their oldest unpaid bills first (both bills you
-  /// created, and — if linked — bills they created that include you).
   static Future<void> settlePartialForFriend({
     required String friendId,
     String? linkedUid,
@@ -281,13 +268,8 @@ class BillService {
     }
 
     await batch.commit();
-    // Settlement doc writes above trigger the same bills/{billId} Cloud
-    // Function used for add/edit/delete, so FCM for settlement goes out
-    // from there too — no separate call needed here.
   }
 
-  /// Marks YOUR OWN participation as settled on every bill created by
-  /// [otherUid] that includes you. Only touches your own settledUids entry.
   static Future<void> settleSharedBillsFrom(String otherUid) async {
     final snap = await _db
         .collection('bills')

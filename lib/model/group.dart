@@ -14,6 +14,7 @@ class Group {
   /// it's created — mirrors how a Bill's `participantUids` makes it show
   /// up cross-account without needing anything else added to it.
   final List<String> memberUids;
+  final Map<String, String> memberFriendIdsByUid;
   final DateTime createdAt;
 
   /// Day of the month (1-31) the group owner picked to settle up on.
@@ -37,6 +38,7 @@ class Group {
     required this.ownerId,
     required this.memberFriendIds,
     this.memberUids = const [],
+    this.memberFriendIdsByUid = const {},
     required this.createdAt,
     this.settleUpDay,
     this.groupType = 'Other',
@@ -55,6 +57,9 @@ class Group {
       ownerId: data['ownerId'] ?? '',
       memberFriendIds: List<String>.from(data['memberFriendIds'] ?? []),
       memberUids: List<String>.from(data['memberUids'] ?? []),
+      memberFriendIdsByUid: Map<String, String>.from(
+        data['memberFriendIdsByUid'] ?? {},
+      ),
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       settleUpDay: data['settleUpDay'] as int?,
       groupType: data['groupType'] as String? ?? 'Other',
@@ -68,6 +73,7 @@ class Group {
       'ownerId': ownerId,
       'memberFriendIds': memberFriendIds,
       'memberUids': memberUids,
+      'memberFriendIdsByUid': memberFriendIdsByUid,
       'createdAt': createdAt,
       'settleUpDay': settleUpDay,
       'groupType': groupType,
@@ -79,6 +85,7 @@ class Group {
     String? name,
     List<String>? memberFriendIds,
     List<String>? memberUids,
+    Map<String, String>? memberFriendIdsByUid,
     int? settleUpDay,
     String? groupType,
     bool? simplifyDebts,
@@ -89,6 +96,7 @@ class Group {
       ownerId: ownerId,
       memberFriendIds: memberFriendIds ?? this.memberFriendIds,
       memberUids: memberUids ?? this.memberUids,
+      memberFriendIdsByUid: memberFriendIdsByUid ?? this.memberFriendIdsByUid,
       createdAt: createdAt,
       settleUpDay: settleUpDay ?? this.settleUpDay,
       groupType: groupType ?? this.groupType,

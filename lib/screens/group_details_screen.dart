@@ -11,7 +11,6 @@ import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/add_bill_screen.dart';
-import 'package:splitpay/screens/add_group_bill_screen.dart';
 import 'package:splitpay/screens/edit_bill_screen.dart';
 import 'package:splitpay/screens/bill_detail_screen.dart';
 import 'package:splitpay/services/group_service.dart';
@@ -177,13 +176,12 @@ class GroupDetailsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final onBillSaved = () => Navigator.of(context).pop();
+          void onBillSaved() => Navigator.of(context).pop();
+
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) =>
-                  group.ownerId == FirebaseAuth.instance.currentUser?.uid
-                  ? AddBillScreen(group: group, onBillSaved: onBillSaved)
-                  : AddGroupBillScreen(group: group, onBillSaved: onBillSaved),
+                  AddBillScreen(group: group, onBillSaved: onBillSaved),
             ),
           );
         },
@@ -502,23 +500,19 @@ class _Header extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  if (_isOwner)
-                    IconButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EditGroupSettingsScreen(group: group),
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.settings_outlined,
-                        color: Colors.white,
-                      ),
-                    )
-                  else
-                    const SizedBox(width: 48),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => EditGroupSettingsScreen(group: group),
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
               Padding(
