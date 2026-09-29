@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:splitpay/core/debt_simplifier.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/model/group.dart';
@@ -71,40 +70,6 @@ class GroupDetailsScreen extends StatelessWidget {
     final myUid = FirebaseAuth.instance.currentUser?.uid;
     if (myUid == null) return 0;
     return bill.balanceForUid(myUid);
-  }
-
-  /// Who this user owes / is owed by in this group, by name — used to put
-  /// actual names (not just a lump sum) into the settle-up reminder.
-  /// Positive value = they owe you, negative = you owe them.
-  Map<String, double> _counterpartsFor(List<Bill> bills, List<Friend> friends) {
-    final myUid = FirebaseAuth.instance.currentUser?.uid;
-    if (myUid == null) return {};
-
-    final netBalanceByUid = <String, double>{};
-    for (final bill in bills) {
-      if (bill.groupId == null) continue;
-      for (final uid in bill.participantUids) {
-        netBalanceByUid[uid] =
-            (netBalanceByUid[uid] ?? 0) + bill.balanceForUid(uid);
-      }
-    }
-
-    final nameByUid = {
-      for (final f in friends)
-        if (f.isLinked) f.linkedUid!: f.name,
-    };
-
-    final result = <String, double>{};
-    for (final debt in simplifyDebts(netBalanceByUid)) {
-      if (debt.fromUid == myUid) {
-        final name = nameByUid[debt.toUid] ?? 'a member';
-        result[name] = (result[name] ?? 0) - debt.amount;
-      } else if (debt.toUid == myUid) {
-        final name = nameByUid[debt.fromUid] ?? 'a member';
-        result[name] = (result[name] ?? 0) + debt.amount;
-      }
-    }
-    return result;
   }
 
   IconData _iconFor(String title) {

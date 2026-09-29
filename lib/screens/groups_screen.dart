@@ -387,12 +387,11 @@ class GroupsScreen extends StatelessWidget {
                                   final selectedMembers = liveFriends
                                       .where((f) => selectedIds.contains(f.id))
                                       .toList();
-                                  final createdGroup =
-                                      await GroupService.createGroup(
-                                        name,
-                                        selectedMembers,
-                                        settleUpDay: settleUpDay,
-                                      );
+                                  await GroupService.createGroup(
+                                    name,
+                                    selectedMembers,
+                                    settleUpDay: settleUpDay,
+                                  );
                                   if (sheetContext.mounted) {
                                     Navigator.pop(sheetContext);
                                   }

@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:splitpay/core/app_toast.dart';
-import 'package:splitpay/core/debt_simplifier.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
@@ -105,35 +104,6 @@ class SharedGroupDetailsScreen extends StatelessWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => GroupSplitupScreen(group: group)));
-  }
-
-  /// Who myUid owes / is owed by in this group, by name — resolved via
-  /// each uid's own user doc since other members may not be in my local
-  /// friends list. Positive = they owe me, negative = I owe them.
-  Future<Map<String, double>> _counterpartsFor(
-    List<Bill> bills,
-    String myUid,
-  ) async {
-    final netBalanceByUid = <String, double>{};
-    for (final bill in bills) {
-      for (final uid in bill.participantUids) {
-        netBalanceByUid[uid] =
-            (netBalanceByUid[uid] ?? 0) + bill.balanceForUid(uid);
-      }
-    }
-
-    final myDebts = simplifyDebts(
-      netBalanceByUid,
-    ).where((d) => d.fromUid == myUid || d.toUid == myUid).toList();
-
-    final result = <String, double>{};
-    for (final debt in myDebts) {
-      final otherUid = debt.fromUid == myUid ? debt.toUid : debt.fromUid;
-      final name = await FriendService.getUserName(otherUid);
-      final signed = debt.fromUid == myUid ? -debt.amount : debt.amount;
-      result[name] = (result[name] ?? 0) + signed;
-    }
-    return result;
   }
 
   @override
