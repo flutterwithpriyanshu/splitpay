@@ -398,7 +398,6 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-
 class _SecurityCheckOverlay extends StatefulWidget {
   const _SecurityCheckOverlay();
 
