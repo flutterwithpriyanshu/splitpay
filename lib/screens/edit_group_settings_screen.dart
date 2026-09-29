@@ -30,6 +30,7 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
   late String _groupType;
   late bool _simplifyDebts;
   bool _isSaving = false;
+  final Set<String> _newlyAddedMemberFriendIds = {};
 
   @override
   void initState() {
@@ -73,8 +74,9 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
   }
 
   Future<void> _addPerson(List<Friend> allFriends) async {
+    final activeIds = _activeMemberIds(allFriends);
     final available = allFriends
-        .where((f) => !_memberFriendIds.contains(f.id))
+        .where((f) => !activeIds.contains(f.id))
         .toList();
     if (available.isEmpty) {
       showAppToast(context, 'All your friends are already in this group');
@@ -140,8 +142,24 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
       },
     );
     if (picked != null) {
-      setState(() => _memberFriendIds.add(picked));
+      setState(() {
+        _memberFriendIds.add(picked);
+        _newlyAddedMemberFriendIds.add(picked);
+      });
     }
+  }
+
+  Set<String> _activeMemberIds(List<Friend> allFriends) {
+    return allFriends
+        .where(
+          (friend) =>
+              _memberFriendIds.contains(friend.id) &&
+              (!friend.isLinked ||
+                  widget.group.memberUids.contains(friend.linkedUid) ||
+                  _newlyAddedMemberFriendIds.contains(friend.id)),
+        )
+        .map((friend) => friend.id)
+        .toSet();
   }
 
   /// True only when every bill tagged to this group has zero outstanding
@@ -219,14 +237,13 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
       showAppToast(context, 'Group name can\'t be empty');
       return;
     }
-    if (_memberFriendIds.isEmpty) {
+    final activeIds = _activeMemberIds(allFriends);
+    if (activeIds.isEmpty) {
       showAppToast(context, 'A group needs at least one member');
       return;
     }
     setState(() => _isSaving = true);
-    final members = allFriends
-        .where((f) => _memberFriendIds.contains(f.id))
-        .toList();
+    final members = allFriends.where((f) => activeIds.contains(f.id)).toList();
     try {
       await GroupService.updateSettings(
         widget.group.id,
@@ -435,7 +452,8 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
         builder: (context, snapshot) {
           final allFriends = snapshot.data ?? [];
           final friendById = {for (final f in allFriends) f.id: f};
-          final members = _memberFriendIds
+          final activeIds = _activeMemberIds(allFriends);
+          final members = activeIds
               .map((id) => friendById[id])
               .whereType<Friend>()
               .toList();
@@ -537,9 +555,10 @@ class _EditGroupSettingsScreenState extends State<EditGroupSettingsScreen> {
                               return;
                             }
                             if (mounted) {
-                              setState(
-                                () => _memberFriendIds.remove(friend.id),
-                              );
+                              setState(() {
+                                _memberFriendIds.remove(friend.id);
+                                _newlyAddedMemberFriendIds.remove(friend.id);
+                              });
                             }
                           },
                         ),

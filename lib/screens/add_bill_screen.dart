@@ -756,6 +756,26 @@ class _AddBillScreenState extends State<AddBillScreen> {
               builder: (context, snapshot) {
                 if (snapshot.hasData && !_isSharedGroupMember) {
                   _liveFriends = snapshot.data!;
+                  if (widget.group != null) {
+                    final activeMemberIds = _liveFriends
+                        .where(
+                          (friend) =>
+                              widget.group!.memberFriendIds.contains(
+                                friend.id,
+                              ) &&
+                              (!friend.isLinked ||
+                                  widget.group!.memberUids.contains(
+                                    friend.linkedUid,
+                                  )),
+                        )
+                        .map((friend) => friend.id)
+                        .toSet();
+                    _selectedFriendIds.removeWhere(
+                      (id) =>
+                          widget.group!.memberFriendIds.contains(id) &&
+                          !activeMemberIds.contains(id),
+                    );
+                  }
                 }
 
                 if (_isSharedGroupMember

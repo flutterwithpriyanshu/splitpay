@@ -19,7 +19,7 @@ class GroupBalanceLine extends StatelessWidget {
     final Color color;
     if (isSettled) {
       text = 'Settled up';
-      color = AppColors.textSecondary;
+      color = AppColors.success;
     } else if (net > 0) {
       text = other != null
           ? 'Get ${AppCurrency.symbol}${net.toStringAsFixed(2)} from $other'

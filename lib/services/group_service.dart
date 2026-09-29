@@ -83,8 +83,12 @@ class GroupService {
   /// for a group. Any member can read it; only shown as editable to the
   /// owner in the UI, but it lives on the group doc so every member's app
   /// can independently schedule their own local reminder from it.
-  static Future<void> updateSettleUpDay(String groupId, int? settleUpDay) {
-    return _db.collection('groups').doc(groupId).update({
+  static Future<void> updateSettleUpDay(
+    String groupId,
+    int? settleUpDay,
+  ) async {
+    await _assertOwner(groupId);
+    await _db.collection('groups').doc(groupId).update({
       'settleUpDay': settleUpDay,
     });
   }
@@ -179,6 +183,7 @@ class GroupService {
   }
 
   static Future<void> deleteGroup(String groupId) async {
+    await _assertOwner(groupId);
     final billsSnap = await _db
         .collection('bills')
         .where('groupId', isEqualTo: groupId)
