@@ -16,7 +16,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final _phoneController = TextEditingController(text: '+91 ');
+  final _countryCodeController = TextEditingController(text: '+91');
+  final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
@@ -29,6 +30,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   void dispose() {
+    _countryCodeController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
@@ -56,17 +58,27 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _sendOtp() async {
+    final countryCodeDigits = _countryCodeController.text.replaceAll(
+      RegExp(r'\D'),
+      '',
+    );
     final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-    if (phoneDigits.length < 8 || phoneDigits.length > 15) {
-      _showError('Enter a valid phone number with its country code');
+    final totalDigits = countryCodeDigits.length + phoneDigits.length;
+    if (countryCodeDigits.isEmpty ||
+        countryCodeDigits.length > 3 ||
+        countryCodeDigits.startsWith('0') ||
+        phoneDigits.isEmpty ||
+        totalDigits < 8 ||
+        totalDigits > 15) {
+      _showError('Enter a valid country code and phone number');
       return;
     }
-    final phone = '+$phoneDigits';
+    final phone = '+$countryCodeDigits$phoneDigits';
     setState(() => _isLoading = true);
     _showSecurityOverlay();
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: '+91$phone',
+        phoneNumber: phone,
         forceResendingToken: _resendToken,
         verificationCompleted: (PhoneAuthCredential credential) async {
           _hideSecurityOverlay();
@@ -197,19 +209,43 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    style: GoogleFonts.inter(fontSize: 15),
-                    decoration: InputDecoration(
-                      hintText: 'Country code and phone number',
-                      filled: true,
-                      fillColor: AppColors.background,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 80,
+                        child: TextField(
+                          controller: _countryCodeController,
+                          keyboardType: TextInputType.phone,
+                          style: GoogleFonts.inter(fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: '+91',
+                            filled: true,
+                            fillColor: AppColors.background,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          style: GoogleFonts.inter(fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: 'Phone number',
+                            filled: true,
+                            fillColor: AppColors.background,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
