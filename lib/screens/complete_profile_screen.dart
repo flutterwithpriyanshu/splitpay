@@ -50,6 +50,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   late final TextEditingController _nameController;
   File? _pickedProfileImage;
   bool _isLoading = false;
+  bool _isLoadingProfile = true;
+  bool _hasExistingProfile = false;
+  bool _upiPrefilled = false;
 
   bool get _phoneAlreadyVerified =>
       widget.phone != null && widget.phone!.trim().isNotEmpty;
@@ -58,6 +61,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.name);
+    _loadExistingProfile();
   }
 
   @override
@@ -72,7 +76,100 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     showAppToast(context, message);
   }
 
+  /// Fills the form from a saved profile map. [overwrite] true = own doc
+  /// (saved values win). false = borrowed from another account of the same
+  /// verified person (only fills empty fields).
+  void _applySavedProfile(
+    Map<String, dynamic> profile, {
+    required bool overwrite,
+  }) {
+    final savedName = (profile['fullName'] as String?)?.trim() ?? '';
+    final savedPhone = (profile['phoneNumber'] as String?)?.trim() ?? '';
+    final savedUpi = (profile['upiId'] as String?)?.trim() ?? '';
+
+    if (savedName.isNotEmpty &&
+        (overwrite || _nameController.text.trim().isEmpty)) {
+      _nameController.text = savedName;
+    }
+    if (!_phoneAlreadyVerified &&
+        savedPhone.isNotEmpty &&
+        (overwrite || _phoneController.text.trim().isEmpty)) {
+      _phoneController.text = savedPhone;
+    }
+    if (savedUpi.isNotEmpty &&
+        (overwrite || _upiController.text.trim().isEmpty)) {
+      _upiController.text = savedUpi;
+      _upiPrefilled = true;
+    }
+  }
+
+  /// Same person can land on a new uid (signed up with phone, logs in with
+  /// Google, or the reverse). Match only on VERIFIED identity: the OTP
+  /// phone or the Google email. Never on a typed, unverified phone.
+  Future<Map<String, dynamic>?> _findProfileFromOtherAccount(
+    CollectionReference<Map<String, dynamic>> users,
+  ) async {
+    try {
+      final queries = <Query<Map<String, dynamic>>>[];
+      if (_phoneAlreadyVerified) {
+        queries.add(
+          users
+              .where('phoneNumber', isEqualTo: normalizePhone(widget.phone!))
+              .limit(5),
+        );
+      }
+      final email = widget.email.trim();
+      if (email.isNotEmpty) {
+        queries.add(users.where('email', isEqualTo: email).limit(5));
+      }
+      for (final q in queries) {
+        final snap = await q.get();
+        for (final d in snap.docs) {
+          if (d.id == widget.uid) continue;
+          final upi = (d.data()['upiId'] as String?)?.trim();
+          if (upi != null && upi.isNotEmpty) return d.data();
+        }
+      }
+    } catch (_) {
+      // Rules or network blocked the lookup. Fall through, user types UPI.
+    }
+    return null;
+  }
+
+  Future<void> _loadExistingProfile() async {
+    final users = FirebaseFirestore.instance.collection('users');
+    try {
+      final doc = await users.doc(widget.uid).get();
+      if (!mounted) return;
+
+      final profile = doc.data();
+      if (profile != null) {
+        _hasExistingProfile = true;
+        _applySavedProfile(profile, overwrite: true);
+      }
+
+      if (_upiController.text.trim().isEmpty) {
+        final other = await _findProfileFromOtherAccount(users);
+        if (!mounted) return;
+        if (other != null) _applySavedProfile(other, overwrite: false);
+      }
+    } catch (e) {
+      // Offline or Firestore error: use last UPI cached on this device.
+      final cached = await ProfilePrefs.getSavedUpi(widget.uid);
+      if (!mounted) return;
+      if (cached != null && _upiController.text.trim().isEmpty) {
+        _upiController.text = cached;
+        _upiPrefilled = true;
+      }
+      _showError('Could not load your saved profile: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingProfile = false);
+    }
+  }
+
   Future<void> _submit() async {
+    if (_isLoadingProfile) return;
+
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       _showError('Please enter your full name');
@@ -107,14 +204,23 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
     setState(() => _isLoading = true);
 
+    var profileSaved = false;
     try {
-      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
+      final profileData = <String, dynamic>{
         'fullName': name,
         'phoneNumber': normalizedPhone,
         'upiId': upi,
         'email': widget.email,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      };
+      if (!_hasExistingProfile) {
+        profileData['createdAt'] = FieldValue.serverTimestamp();
+      }
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.uid)
+          .set(profileData, SetOptions(merge: true));
+      profileSaved = true;
+      await ProfilePrefs.saveUpi(widget.uid, upi);
 
       if (_pickedProfileImage != null) {
         await LocalImageService.saveProfileImage(
@@ -130,7 +236,11 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       if (!mounted) return;
       widget.onDone();
     } catch (e) {
-      _showError('Something went wrong. Try again.');
+      _showError(
+        profileSaved
+            ? 'Your profile was saved, but setup could not be completed: $e'
+            : 'Could not save your profile to Firestore: $e',
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -265,7 +375,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Used to receive settlement payments via UPI.',
+                _upiPrefilled
+                    ? 'Filled from your saved profile. Edit it to change.'
+                    : 'Used to receive settlement payments via UPI.',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: AppColors.textSecondary,
@@ -275,14 +387,14 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
+                  onPressed: _isLoading || _isLoadingProfile ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: _isLoading
+                  child: _isLoading || _isLoadingProfile
                       ? const SizedBox(
                           width: 22,
                           height: 22,

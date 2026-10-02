@@ -1,11 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Caches "profile setup finished" locally so re-opening the app can go
-/// straight to MainShell without waiting on a Firestore round trip.
-/// Keyed by uid so a different account signing in on the same device
-/// never wrongly inherits another account's completed state.
 class ProfilePrefs {
   static const _key = 'profile_complete_uid';
+  static const _upiKeyPrefix = 'saved_upi_';
 
   static Future<bool> isProfileComplete(String uid) async {
     final prefs = await SharedPreferences.getInstance();
@@ -20,5 +17,17 @@ class ProfilePrefs {
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key);
+  }
+
+  /// Device-side copy of the user's UPI, used only when Firestore can't be
+  /// reached while pre-filling the complete-profile form.
+  static Future<String?> getSavedUpi(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_upiKeyPrefix$uid');
+  }
+
+  static Future<void> saveUpi(String uid, String upi) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('$_upiKeyPrefix$uid', upi);
   }
 }
