@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:splitpay/theme/app_colors.dart';
@@ -54,6 +56,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   bool _hasExistingProfile = false;
   bool _upiPrefilled = false;
 
+  /// Normalized phone already saved on THIS uid's doc ('' = none yet).
+  String _savedOwnPhone = '';
+
   bool get _phoneAlreadyVerified =>
       widget.phone != null && widget.phone!.trim().isNotEmpty;
 
@@ -61,7 +66,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.name);
-    _loadExistingProfile();
+    _loadExistingProfile().then((_) => _checkVerifiedPhoneDuplicate());
   }
 
   @override
@@ -79,10 +84,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   /// Fills the form from a saved profile map. [overwrite] true = own doc
   /// (saved values win). false = borrowed from another account of the same
   /// verified person (only fills empty fields).
-  void _applySavedProfile(
-    Map<String, dynamic> profile, {
-    required bool overwrite,
-  }) {
+  void _applySavedProfile(Map<String, dynamic> profile,
+      {required bool overwrite}) {
     final savedName = (profile['fullName'] as String?)?.trim() ?? '';
     final savedPhone = (profile['phoneNumber'] as String?)?.trim() ?? '';
     final savedUpi = (profile['upiId'] as String?)?.trim() ?? '';
@@ -103,37 +106,124 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     }
   }
 
-  /// Same person can land on a new uid (signed up with phone, logs in with
-  /// Google, or the reverse). Match only on VERIFIED identity: the OTP
-  /// phone or the Google email. Never on a typed, unverified phone.
+  /// Same person can land on a new uid. Match only on the Google email,
+  /// which is verified. Phone is NOT used here: a typed phone is
+  /// unverified, and a duplicate phone is blocked instead (see below).
   Future<Map<String, dynamic>?> _findProfileFromOtherAccount(
     CollectionReference<Map<String, dynamic>> users,
   ) async {
     try {
-      final queries = <Query<Map<String, dynamic>>>[];
-      if (_phoneAlreadyVerified) {
-        queries.add(
-          users
-              .where('phoneNumber', isEqualTo: normalizePhone(widget.phone!))
-              .limit(5),
-        );
-      }
       final email = widget.email.trim();
-      if (email.isNotEmpty) {
-        queries.add(users.where('email', isEqualTo: email).limit(5));
-      }
-      for (final q in queries) {
-        final snap = await q.get();
-        for (final d in snap.docs) {
-          if (d.id == widget.uid) continue;
-          final upi = (d.data()['upiId'] as String?)?.trim();
-          if (upi != null && upi.isNotEmpty) return d.data();
-        }
+      if (email.isEmpty) return null;
+      final snap = await users.where('email', isEqualTo: email).limit(5).get();
+      for (final d in snap.docs) {
+        if (d.id == widget.uid) continue;
+        final upi = (d.data()['upiId'] as String?)?.trim();
+        if (upi != null && upi.isNotEmpty) return d.data();
       }
     } catch (_) {
-      // Rules or network blocked the lookup. Fall through, user types UPI.
+      // Rules or network blocked the lookup. User types UPI instead.
     }
     return null;
+  }
+
+  /// Login method of the OTHER account that already owns this phone
+  /// number: 'phone', 'google' or 'unknown' (old doc without the field).
+  /// Null = nobody else owns it. Fails open (null) on error so a rules or
+  /// network problem never locks a user out of signup.
+  Future<String?> _otherAccountMethodForPhone(String normalizedPhone) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('phoneNumber', isEqualTo: normalizedPhone)
+          .limit(5)
+          .get();
+      for (final d in snap.docs) {
+        if (d.id == widget.uid) continue;
+        final m = (d.data()['signInMethod'] as String?)?.trim();
+        return (m == 'phone' || m == 'google') ? m : 'unknown';
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Method of the login being used right now, from Firebase Auth.
+  String get _currentSignInMethod {
+    final ids = FirebaseAuth.instance.currentUser?.providerData
+            .map((p) => p.providerId)
+            .toSet() ??
+        <String>{};
+    if (ids.contains('phone')) return 'phone';
+    if (ids.contains('google.com')) return 'google';
+    return _phoneAlreadyVerified ? 'phone' : 'google';
+  }
+
+  /// Phone OTP login whose number already sits on another account
+  /// (e.g. user signed up with Google and typed this number earlier).
+  Future<void> _checkVerifiedPhoneDuplicate() async {
+    if (!mounted || !_phoneAlreadyVerified) return;
+    final verified = normalizePhone(widget.phone!);
+    if (verified == _savedOwnPhone) return;
+    final method = await _otherAccountMethodForPhone(verified);
+    if (method != null && mounted) {
+      await _showDuplicatePhoneDialog(verifiedPhone: true, method: method);
+    }
+  }
+
+  Future<void> _showDuplicatePhoneDialog({
+    required bool verifiedPhone,
+    required String method,
+  }) async {
+    final String hint;
+    switch (method) {
+      case 'google':
+        hint = 'Log in with Google instead.';
+        break;
+      case 'phone':
+        hint = 'Log in with this number using OTP instead.';
+        break;
+      default:
+        hint = 'Log in with the method you used first.';
+    }
+    final goBack = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Number already in use'),
+        content: Text('This number already belongs to an existing account. $hint'),
+        actions: [
+          if (!verifiedPhone)
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Change number'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Back to login'),
+          ),
+        ],
+      ),
+    );
+    if (goBack == true) await _backToLogin();
+  }
+
+  /// Drops the empty half-made account (only when no profile doc exists,
+  /// so no data is lost) and returns to the sign-in screen. The root
+  /// StreamBuilder in main.dart swaps to AuthScreen on signOut.
+  Future<void> _backToLogin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    try {
+      if (user != null && user.uid == widget.uid && !_hasExistingProfile) {
+        await user.delete();
+      }
+    } catch (_) {
+      // Needs recent login or already gone. signOut below still runs.
+    }
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
+    await ProfilePrefs.clear();
+    await FirebaseAuth.instance.signOut();
   }
 
   Future<void> _loadExistingProfile() async {
@@ -145,6 +235,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       final profile = doc.data();
       if (profile != null) {
         _hasExistingProfile = true;
+        _savedOwnPhone =
+            normalizePhone((profile['phoneNumber'] as String?) ?? '');
         _applySavedProfile(profile, overwrite: true);
       }
 
@@ -190,6 +282,20 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         _showError('Phone number must contain 10 digits');
         return;
       }
+      if (normalizedPhone != _savedOwnPhone) {
+        setState(() => _isLoading = true);
+        final method = await _otherAccountMethodForPhone(normalizedPhone);
+        if (mounted) setState(() => _isLoading = false);
+        if (method != null) {
+          if (mounted) {
+            await _showDuplicatePhoneDialog(
+              verifiedPhone: false,
+              method: method,
+            );
+          }
+          return;
+        }
+      }
     }
 
     final upi = _upiController.text.trim();
@@ -210,10 +316,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         'fullName': name,
         'phoneNumber': normalizedPhone,
         'upiId': upi,
-        'email': widget.email,
       };
+      // Phone-OTP users have no email. Never store a blank one.
+      final email = widget.email.trim();
+      if (email.isNotEmpty) profileData['email'] = email;
       if (!_hasExistingProfile) {
         profileData['createdAt'] = FieldValue.serverTimestamp();
+        // First login method. Used to tell the user which login to use
+        // when the same phone shows up on another account.
+        profileData['signInMethod'] = _currentSignInMethod;
       }
       await FirebaseFirestore.instance
           .collection('users')

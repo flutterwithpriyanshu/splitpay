@@ -12,6 +12,7 @@ import 'package:splitpay/screens/static_content_screen.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/edit_profile_screen.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
+import 'package:splitpay/widgets/login_method_badge.dart';
 import 'package:splitpay/widgets/manage_friends_screen.dart';
 import 'package:splitpay/services/fcm_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -276,12 +277,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                phone,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      phone,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const LoginMethodBadge(),
+                                ],
                               ),
                             ],
                           ),
