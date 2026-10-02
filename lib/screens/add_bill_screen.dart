@@ -7,11 +7,11 @@ import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
-import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/core/app_date_format.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/contact_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_bill/widgets/form_components.dart';
@@ -262,17 +262,30 @@ class _AddBillScreenState extends State<AddBillScreen> {
                                   picked.id!,
                                   properties: ContactProperties.all,
                                 );
+                                if (!context.mounted) return;
                                 if (fullContact == null) return;
 
                                 final pickedName =
                                     fullContact.displayName ?? '';
-                                final pickedPhone =
-                                    fullContact.phones.isNotEmpty
-                                    ? normalizePhone(
-                                        fullContact.phones.first.number,
-                                      )
-                                    : '';
-                                final photo = fullContact.photo?.fullSize;
+                                final phoneNumbers = fullContact.phones
+                                    .map((phone) => phone.number)
+                                    .toList();
+                                final selectedPhone =
+                                    await chooseContactPhoneNumber(
+                                      context,
+                                      phoneNumbers,
+                                    );
+                                if (!context.mounted) return;
+                                if (phoneNumbers.length > 1 &&
+                                    selectedPhone == null) {
+                                  return;
+                                }
+                                final pickedPhone = selectedPhone == null
+                                    ? ''
+                                    : normalizePhone(selectedPhone);
+                                final photo =
+                                    fullContact.photo?.fullSize ??
+                                    fullContact.photo?.thumbnail;
                                 final pickedPhoto =
                                     photo != null && photo.isNotEmpty
                                     ? photo
@@ -331,67 +344,73 @@ class _AddBillScreenState extends State<AddBillScreen> {
                               }
 
                               setSheetState(() => isChecking = true);
+                              try {
+                                if (await FriendService.isOwnPhone(phone)) {
+                                  if (context.mounted) {
+                                    showAppToast(
+                                      context,
+                                      "That's your own number — you can't add yourself as a friend",
+                                    );
+                                  }
+                                  return;
+                                }
 
-                              if (await FriendService.isOwnPhone(phone)) {
-                                setSheetState(() => isChecking = false);
+                                final linkedUid =
+                                    await FriendService.findUserByPhone(phone);
+
+                                if (linkedUid == null) {
+                                  if (context.mounted) {
+                                    showAppToast(
+                                      context,
+                                      "This number hasn't signed up for SplitPay — friend not added",
+                                    );
+                                  }
+                                  return;
+                                }
+
+                                final alreadyAdded =
+                                    await FriendService.isFriendAlreadyAdded(
+                                      phoneNumber: phone,
+                                      linkedUid: linkedUid,
+                                    );
+                                if (alreadyAdded) {
+                                  if (context.mounted) {
+                                    showAppToast(
+                                      context,
+                                      'Friend already added',
+                                    );
+                                  }
+                                  return;
+                                }
+
+                                final newFriend = await FriendService.addFriend(
+                                  name,
+                                  phoneNumber: phone,
+                                  contactPhotoBytes: pendingContactPhoto,
+                                );
+
+                                if (!mounted) return;
+                                setState(() => _toggleFriend(newFriend.id));
+
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  showAppToast(
+                                    context,
+                                    '${newFriend.name} is on SplitPay! Accounts linked.',
+                                    isError: false,
+                                  );
+                                }
+                              } catch (error) {
                                 if (context.mounted) {
                                   showAppToast(
                                     context,
-                                    "That's your own number — you can't add yourself as a friend",
+                                    'Could not add friend: $error',
                                   );
                                 }
-                                return;
-                              }
-
-                              final linkedUid =
-                                  await FriendService.findUserByPhone(phone);
-
-                              if (linkedUid == null) {
-                                setSheetState(() => isChecking = false);
+                              } finally {
                                 if (context.mounted) {
-                                  showAppToast(
-                                    context,
-                                    "This number hasn't signed up for SplitPay — friend not added",
-                                  );
+                                  setSheetState(() => isChecking = false);
                                 }
-                                return;
-                              }
-
-                              final alreadyAdded =
-                                  await FriendService.isFriendAlreadyAdded(
-                                    phoneNumber: phone,
-                                    linkedUid: linkedUid,
-                                  );
-                              if (alreadyAdded) {
-                                setSheetState(() => isChecking = false);
-                                if (context.mounted) {
-                                  showAppToast(context, 'Friend already added');
-                                }
-                                return;
-                              }
-
-                              final newFriend = await FriendService.addFriend(
-                                name,
-                                phoneNumber: phone,
-                              );
-
-                              // Save the contact's photo locally, if we got one.
-                              if (pendingContactPhoto != null) {
-                                await LocalImageService.saveFriendImage(
-                                  newFriend.id,
-                                  pendingContactPhoto!,
-                                );
-                              }
-
-                              setState(() => _toggleFriend(newFriend.id));
-
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                                showAppToast(
-                                  context,
-                                  '${newFriend.name} is on SplitPay! Accounts linked.',
-                                  isError: false,
-                                );
                               }
                             },
                       style: ElevatedButton.styleFrom(

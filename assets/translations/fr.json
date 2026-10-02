@@ -37,6 +37,7 @@
   "create_group": "Créer un groupe",
   "name": "Nom",
   "phone_number": "Numéro de téléphone",
+  "choose_phone_number": "Choisissez un numéro de téléphone",
   "name_phone_required": "Le nom et le téléphone sont requis",
   "friend_already_added": "Ami déjà ajouté",
   "add_friend": "Ajouter un ami",

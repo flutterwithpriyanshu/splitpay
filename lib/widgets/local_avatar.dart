@@ -59,7 +59,7 @@ class _LocalAvatarState extends State<LocalAvatar> {
         if (file != null) {
           return CircleAvatar(radius: radius, backgroundImage: FileImage(file));
         }
-        if (fallbackUrl != null) {
+        if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
           return CircleAvatar(
             radius: radius,
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),

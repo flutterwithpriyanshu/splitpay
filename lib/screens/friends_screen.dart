@@ -7,11 +7,11 @@ import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
 import 'package:splitpay/services/friend_service.dart';
-import 'package:splitpay/services/local_image_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/widgets/local_avatar.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/core/contact_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/core/app_currency.dart';
 
@@ -162,15 +162,29 @@ class FriendsScreen extends StatelessWidget {
                                 picked.id!,
                                 properties: ContactProperties.all,
                               );
+                              if (!sheetContext.mounted) return;
                               if (fullContact == null) return;
 
                               final pickedName = fullContact.displayName ?? '';
-                              final pickedPhone = fullContact.phones.isNotEmpty
-                                  ? normalizePhone(
-                                      fullContact.phones.first.number,
-                                    )
-                                  : '';
-                              final photo = fullContact.photo?.fullSize;
+                              final phoneNumbers = fullContact.phones
+                                  .map((phone) => phone.number)
+                                  .toList();
+                              final selectedPhone =
+                                  await chooseContactPhoneNumber(
+                                    sheetContext,
+                                    phoneNumbers,
+                                  );
+                              if (!sheetContext.mounted) return;
+                              if (phoneNumbers.length > 1 &&
+                                  selectedPhone == null) {
+                                return;
+                              }
+                              final pickedPhone = selectedPhone == null
+                                  ? ''
+                                  : normalizePhone(selectedPhone);
+                              final photo =
+                                  fullContact.photo?.fullSize ??
+                                  fullContact.photo?.thumbnail;
                               final pickedPhoto =
                                   photo != null && photo.isNotEmpty
                                   ? photo
@@ -228,62 +242,65 @@ class FriendsScreen extends StatelessWidget {
                               }
 
                               setSheetState(() => isChecking = true);
-
-                              if (await FriendService.isOwnPhone(phone)) {
-                                setSheetState(() => isChecking = false);
-                                if (sheetContext.mounted) {
-                                  showAppToast(
-                                    sheetContext,
-                                    "That's your own number — you can't add yourself as a friend",
-                                  );
+                              try {
+                                if (await FriendService.isOwnPhone(phone)) {
+                                  if (sheetContext.mounted) {
+                                    showAppToast(
+                                      sheetContext,
+                                      "That's your own number — you can't add yourself as a friend",
+                                    );
+                                  }
+                                  return;
                                 }
-                                return;
-                              }
 
-                              final linkedUid =
-                                  await FriendService.findUserByPhone(phone);
+                                final linkedUid =
+                                    await FriendService.findUserByPhone(phone);
 
-                              if (linkedUid == null) {
-                                setSheetState(() => isChecking = false);
-                                if (sheetContext.mounted) {
-                                  showAppToast(
-                                    sheetContext,
-                                    "This number hasn't signed up for SplitPay — friend not added",
-                                  );
+                                if (linkedUid == null) {
+                                  if (sheetContext.mounted) {
+                                    showAppToast(
+                                      sheetContext,
+                                      "This number hasn't signed up for SplitPay — friend not added",
+                                    );
+                                  }
+                                  return;
                                 }
-                                return;
-                              }
 
-                              final alreadyAdded =
-                                  await FriendService.isFriendAlreadyAdded(
-                                    phoneNumber: phone,
-                                    linkedUid: linkedUid,
-                                  );
-                              if (alreadyAdded) {
-                                setSheetState(() => isChecking = false);
-                                if (sheetContext.mounted) {
-                                  showAppToast(
-                                    sheetContext,
-                                    'friend_already_added'.tr(),
-                                  );
+                                final alreadyAdded =
+                                    await FriendService.isFriendAlreadyAdded(
+                                      phoneNumber: phone,
+                                      linkedUid: linkedUid,
+                                    );
+                                if (alreadyAdded) {
+                                  if (sheetContext.mounted) {
+                                    showAppToast(
+                                      sheetContext,
+                                      'friend_already_added'.tr(),
+                                    );
+                                  }
+                                  return;
                                 }
-                                return;
-                              }
 
-                              final newFriend = await FriendService.addFriend(
-                                name,
-                                phoneNumber: phone,
-                              );
-
-                              if (pendingContactPhoto != null) {
-                                await LocalImageService.saveFriendImage(
-                                  newFriend.id,
-                                  pendingContactPhoto!,
+                                await FriendService.addFriend(
+                                  name,
+                                  phoneNumber: phone,
+                                  contactPhotoBytes: pendingContactPhoto,
                                 );
-                              }
 
-                              if (sheetContext.mounted) {
-                                Navigator.pop(sheetContext);
+                                if (sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
+                                }
+                              } catch (error) {
+                                if (sheetContext.mounted) {
+                                  showAppToast(
+                                    sheetContext,
+                                    'Could not add friend: $error',
+                                  );
+                                }
+                              } finally {
+                                if (sheetContext.mounted) {
+                                  setSheetState(() => isChecking = false);
+                                }
                               }
                             },
                       style: ElevatedButton.styleFrom(

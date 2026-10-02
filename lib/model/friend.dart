@@ -19,7 +19,7 @@ class Friend {
     return Friend(
       id: id,
       name: data['name'] ?? '',
-      avatarUrl: data['avatarUrl'] ?? 'https://i.pravatar.cc/150',
+      avatarUrl: data['avatarUrl'] ?? '',
       phoneNumber: data['phoneNumber'],
       linkedUid: data['linkedUid'],
       createdAt: (data['createdAt'] as dynamic)?.toDate(),

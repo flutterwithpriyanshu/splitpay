@@ -37,6 +37,7 @@
   "create_group": "समूह बनाएं",
   "name": "नाम",
   "phone_number": "फोन नंबर",
+  "choose_phone_number": "फ़ोन नंबर चुनें",
   "name_phone_required": "नाम और फोन आवश्यक हैं",
   "friend_already_added": "दोस्त पहले से जोड़ा गया",
   "add_friend": "दोस्त जोड़ें",

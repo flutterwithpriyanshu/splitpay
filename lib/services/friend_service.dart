@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/core/phone_utils.dart';
+import 'package:splitpay/services/local_image_service.dart';
 
 class FriendService {
   static final _db = FirebaseFirestore.instance;
@@ -108,8 +111,7 @@ class FriendService {
     await _db.collection('friends').add({
       'ownerId': targetUid,
       'name': myName,
-      'avatarUrl':
-          'https://i.pravatar.cc/150?u=$myName-${DateTime.now().millisecondsSinceEpoch}',
+      'avatarUrl': '',
       'phoneNumber': myPhone,
       'linkedUid': _uid,
       'createdAt': DateTime.now(),
@@ -118,22 +120,30 @@ class FriendService {
 
   /// Adds a friend. If a phone number is given, checks whether it
   /// matches a real registered user and links it if so.
-  static Future<Friend> addFriend(String name, {String? phoneNumber}) async {
+  static Future<Friend> addFriend(
+    String name, {
+    String? phoneNumber,
+    Uint8List? contactPhotoBytes,
+  }) async {
     String? linkedUid;
     if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
       linkedUid = await findUserByPhone(phoneNumber.trim());
     }
 
+    final ref = _db.collection('friends').doc();
+    if (contactPhotoBytes != null) {
+      await LocalImageService.saveFriendImage(ref.id, contactPhotoBytes);
+    }
+
     final data = {
       'ownerId': _uid,
       'name': name,
-      'avatarUrl':
-          'https://i.pravatar.cc/150?u=$name-${DateTime.now().millisecondsSinceEpoch}',
+      'avatarUrl': '',
       'phoneNumber': phoneNumber,
       'linkedUid': linkedUid,
       'createdAt': DateTime.now(),
     };
-    final ref = await _db.collection('friends').add(data);
+    await ref.set(data);
     return Friend.fromFirestore(ref.id, data);
   }
 
