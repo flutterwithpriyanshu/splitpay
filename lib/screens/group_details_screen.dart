@@ -620,7 +620,19 @@ class _BillRow extends StatelessWidget {
     final isSettled = net.abs() <= 0.009;
     final ownShare =
         bill.sharesByUid[myUid] ?? (myUid == bill.ownerId ? bill.myShare : 0.0);
-    final amount = isSettled ? ownShare : net.abs();
+    // Payer: always show the full amount others owe. Others: always show
+    // own share. Both stay fixed after settle or partial pay.
+    double amount;
+    if (youPaid) {
+      final othersTotal = bill.sharesByUid.entries
+          .where((e) => e.key != myUid)
+          .fold<double>(0.0, (a, e) => a + e.value);
+      amount = othersTotal > 0.009
+          ? othersTotal
+          : (bill.amount - ownShare).clamp(0.0, double.infinity).toDouble();
+    } else {
+      amount = ownShare;
+    }
     final label = isSettled ? 'settled' : (net > 0 ? 'get' : 'pay');
     final amountColor = isSettled
         ? AppColors.success
