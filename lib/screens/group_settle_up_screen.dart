@@ -252,16 +252,21 @@ class GroupSettleUpScreen extends StatelessWidget {
     final safeContext = context;
     final youOwe = debt.fromUid == _myUid;
     try {
-      await BillService.settleGroupPayment(
+      final applied = await BillService.settleGroupPayment(
         groupId: group.id,
         fromUid: debt.fromUid,
         toUid: debt.toUid,
         amount: entered,
       );
+      if (applied <= 0.009) {
+        throw StateError(
+          'No bill found to settle between these two. Nothing recorded.',
+        );
+      }
 
       await TransactionService.addTransaction(
         personName: otherName,
-        amount: entered,
+        amount: applied,
         type: youOwe ? TransactionType.sent : TransactionType.received,
         note: note,
       );
@@ -273,7 +278,7 @@ class GroupSettleUpScreen extends StatelessWidget {
       await TransactionService.addTransactionForUid(
         targetUid: otherUid,
         personName: myName,
-        amount: entered,
+        amount: applied,
         type: youOwe ? TransactionType.received : TransactionType.sent,
         note: note,
       );
@@ -281,7 +286,7 @@ class GroupSettleUpScreen extends StatelessWidget {
       if (!safeContext.mounted) return;
       showAppToast(
         safeContext,
-        entered >= debt.amount - 0.01
+        applied >= debt.amount - 0.01
             ? 'Settled up!'
             : 'Partial payment recorded',
         isError: false,

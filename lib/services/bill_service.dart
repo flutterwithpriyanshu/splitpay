@@ -105,7 +105,9 @@ class BillService {
     });
   }
 
-  static Future<void> settleGroupPayment({
+  /// Returns the amount actually applied to bills (can be less than
+  /// [amount] when no matching bill is left for this payer).
+  static Future<double> settleGroupPayment({
     required String groupId,
     required String fromUid,
     required String toUid,
@@ -113,6 +115,7 @@ class BillService {
   }) async {
     double remainingToApply = amount;
     final batch = _db.batch();
+    var touched = 0;
 
     final snap = await _db
         .collection('bills')
@@ -150,9 +153,12 @@ class BillService {
         update['settledUids'] = settledUids;
       }
       batch.update(doc.reference, update);
+      touched++;
     }
 
+    if (touched == 0) return 0;
     await batch.commit();
+    return amount - remainingToApply;
   }
 
   static Future<void> deleteBill(String billId) async {
