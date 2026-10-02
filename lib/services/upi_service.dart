@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 enum UpiLaunchResult { launched, noAppFound, failed }
@@ -31,14 +32,17 @@ class UpiService {
       receiverName: receiverName,
       amount: amount,
     );
+    // canLaunchUrl is unreliable on Android 11+ (package visibility).
+    // Launch directly, treat false / ACTIVITY_NOT_FOUND as no app.
     try {
-      final canLaunch = await canLaunchUrl(uri);
-      if (!canLaunch) return UpiLaunchResult.noAppFound;
       final launched = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
       );
-      return launched ? UpiLaunchResult.launched : UpiLaunchResult.failed;
+      return launched ? UpiLaunchResult.launched : UpiLaunchResult.noAppFound;
+    } on PlatformException catch (e) {
+      if (e.code == 'ACTIVITY_NOT_FOUND') return UpiLaunchResult.noAppFound;
+      return UpiLaunchResult.failed;
     } catch (_) {
       return UpiLaunchResult.failed;
     }
