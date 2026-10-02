@@ -1,3 +1,5 @@
+import 'package:splitpay/core/firestore_date.dart';
+
 class Friend {
   final String id;
   final String name;
@@ -22,7 +24,7 @@ class Friend {
       avatarUrl: data['avatarUrl'] ?? '',
       phoneNumber: data['phoneNumber'],
       linkedUid: data['linkedUid'],
-      createdAt: (data['createdAt'] as dynamic)?.toDate(),
+      createdAt: toDateTime(data['createdAt']),
     );
   }
 

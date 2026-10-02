@@ -1,3 +1,5 @@
+import 'package:splitpay/core/firestore_date.dart';
+
 class Group {
   final String id;
   final String name;
@@ -60,7 +62,7 @@ class Group {
       memberFriendIdsByUid: Map<String, String>.from(
         data['memberFriendIdsByUid'] ?? {},
       ),
-      createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      createdAt: toDateTime(data['createdAt']) ?? DateTime.now(),
       settleUpDay: data['settleUpDay'] as int?,
       groupType: data['groupType'] as String? ?? 'Other',
       simplifyDebts: data['simplifyDebts'] as bool? ?? true,
