@@ -28,8 +28,62 @@ class _AuthScreenState extends State<AuthScreen> {
 
   bool _securityOverlayOpen = false;
 
+  // OTP cooldown. Static so it survives logout -> AuthScreen rebuild, which
+  // otherwise resets the timer and lets a user spam Send OTP.
+  static DateTime? _cooldownUntil;
+  static bool _cooldownTooMany = false;
+  Timer? _cooldownTimer;
+  int _cooldownSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_cooldownUntil != null) _runCooldownTimer();
+  }
+
+  void _startCooldown(int seconds, {bool tooMany = false}) {
+    _cooldownTooMany = tooMany;
+    _cooldownUntil = DateTime.now().add(Duration(seconds: seconds));
+    _runCooldownTimer();
+  }
+
+  void _runCooldownTimer() {
+    _cooldownTimer?.cancel();
+    _tickCooldown();
+    if (_cooldownUntil == null) return;
+    _cooldownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _tickCooldown(),
+    );
+  }
+
+  String _formatCooldown(int seconds) {
+    final m = seconds ~/ 60;
+    final sec = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$sec';
+  }
+
+  void _tickCooldown() {
+    final until = _cooldownUntil;
+    final left = until == null
+        ? 0
+        : (until.difference(DateTime.now()).inMilliseconds / 1000).ceil();
+    if (left <= 0) {
+      _cooldownTimer?.cancel();
+      _cooldownTimer = null;
+      _cooldownUntil = null;
+      _cooldownTooMany = false;
+      if (mounted && _cooldownSeconds != 0) {
+        setState(() => _cooldownSeconds = 0);
+      }
+      return;
+    }
+    if (mounted) setState(() => _cooldownSeconds = left);
+  }
+
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _countryCodeController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
@@ -58,6 +112,12 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _sendOtp() async {
+    if (_cooldownSeconds > 0) {
+      _showError(
+        'Wait ${_formatCooldown(_cooldownSeconds)} before requesting another OTP',
+      );
+      return;
+    }
     final countryCodeDigits = _countryCodeController.text.replaceAll(
       RegExp(r'\D'),
       '',
@@ -86,13 +146,25 @@ class _AuthScreenState extends State<AuthScreen> {
         },
         verificationFailed: (FirebaseAuthException e) {
           _hideSecurityOverlay();
+          // 17010 = too-many-requests: Firebase abuse throttle on this
+          // device or number. Back off longer, don't keep hammering it.
+          final tooMany =
+              e.code == 'too-many-requests' ||
+              (e.message ?? '').contains('unusual activity');
+          _startCooldown(tooMany ? 300 : 30, tooMany: tooMany);
           if (mounted) {
             setState(() => _isLoading = false);
-            _showError(e.message ?? 'Verification failed');
+            _showError(
+              tooMany
+                  ? 'Too many attempts from this device. Please wait, or '
+                        'continue with Google.'
+                  : (e.message ?? 'Verification failed'),
+            );
           }
         },
         codeSent: (String verificationId, int? resendToken) {
           _hideSecurityOverlay();
+          _startCooldown(60);
           if (mounted) {
             setState(() {
               _isLoading = false;
@@ -251,9 +323,15 @@ class _AuthScreenState extends State<AuthScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _sendOtp,
+                      onPressed: (_isLoading || _cooldownSeconds > 0)
+                          ? null
+                          : _sendOtp,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.primary.withValues(
+                          alpha: 0.45,
+                        ),
+                        disabledForegroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -268,7 +346,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                             )
                           : Text(
-                              'Send OTP',
+                              _cooldownSeconds > 0
+                                  ? 'Resend OTP in ${_formatCooldown(_cooldownSeconds)}'
+                                  : 'Send OTP',
                               style: GoogleFonts.inter(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -277,6 +357,13 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                     ),
                   ),
+                  if (_cooldownSeconds > 0) ...[
+                    const SizedBox(height: 12),
+                    _CooldownNotice(
+                      tooMany: _cooldownTooMany,
+                      timeLeft: _formatCooldown(_cooldownSeconds),
+                    ),
+                  ],
                 ] else ...[
                   Text(
                     'OTP',
@@ -530,6 +617,50 @@ class _SecurityCheckOverlayState extends State<_SecurityCheckOverlay> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Inline notice shown under the Send OTP button while a cooldown runs.
+class _CooldownNotice extends StatelessWidget {
+  final bool tooMany;
+  final String timeLeft;
+
+  const _CooldownNotice({required this.tooMany, required this.timeLeft});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = tooMany ? AppColors.error : AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            tooMany ? Icons.shield_outlined : Icons.timer_outlined,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              tooMany
+                  ? 'Too many attempts from this device. Try again in '
+                        '$timeLeft, or continue with Google below.'
+                  : 'You can request a new OTP in $timeLeft.',
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                height: 1.4,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
