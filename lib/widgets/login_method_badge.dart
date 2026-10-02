@@ -54,16 +54,11 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: Container(
+      child: Image.asset(
+        asset,
         width: size,
-        height: size,
-        padding: EdgeInsets.all(size * 0.18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFDADCE0)),
-        ),
-        child: Image.asset(asset, fit: BoxFit.contain),
+        height: size-3.5,
+        fit: BoxFit.contain,
       ),
     );
   }

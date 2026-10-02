@@ -41,27 +41,36 @@ class SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
+      child: Material(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(icon, color: AppColors.primary, size: 22),
-        title: Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
-        ),
-        trailing: trailing != null
-            ? Text(
-                trailing!,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: onTap,
+          leading: Icon(icon, color: AppColors.primary, size: 22),
+          title: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          trailing: trailing != null
+              ? Text(
+                  trailing!,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                )
+              : Icon(
+                  Icons.chevron_right_rounded,
                   color: AppColors.textSecondary,
                 ),
-              )
-            : Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }

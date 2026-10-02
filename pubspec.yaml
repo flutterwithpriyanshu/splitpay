@@ -50,6 +50,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/
+    - assets/images/
     - assets/intro.png
     - assets/translations/
   # To add assets to your application, add an assets section, like this:
