@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/screens/profile_setup_components.dart';
+import 'package:splitpay/widgets/app_ui.dart';
 import 'package:splitpay/core/phone_utils.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/core/upi_utils.dart';
@@ -17,8 +19,8 @@ import 'package:splitpay/services/fcm_service.dart';
 /// Shown once, right after a brand-new sign-in, to collect whatever the
 /// auth provider didn't already give us. Google gives name + email but
 /// never phone/UPI. Phone-OTP sign-in already gives a verified phone
-/// number, so that field is hidden in that case — only UPI (and name,
-/// pre-filled empty) is asked for.
+/// number: same field is shown, locked + "Verified". Google sign-in
+/// shows it editable.
 class CompleteProfileScreen extends StatefulWidget {
   final String uid;
   final String name;
@@ -55,6 +57,12 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   bool _isLoadingProfile = true;
   bool _hasExistingProfile = false;
   bool _upiPrefilled = false;
+  bool _upiTouched = false;
+  File? _existingImage;
+
+  final _nameFocus = FocusNode();
+  final _phoneFocus = FocusNode();
+  final _upiFocus = FocusNode();
 
   /// Normalized phone already saved on THIS uid's doc ('' = none yet).
   String _savedOwnPhone = '';
@@ -66,6 +74,13 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.name);
+    if (_phoneAlreadyVerified) {
+      _phoneController.text = _formatVerifiedPhone(widget.phone!);
+    }
+    for (final f in [_nameFocus, _phoneFocus, _upiFocus]) {
+      f.addListener(_onFocusChange);
+    }
+    _loadLocalImage();
     _loadExistingProfile().then((_) => _checkVerifiedPhoneDuplicate());
   }
 
@@ -74,7 +89,37 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     _phoneController.dispose();
     _upiController.dispose();
     _nameController.dispose();
+    for (final f in [_nameFocus, _phoneFocus, _upiFocus]) {
+      f.removeListener(_onFocusChange);
+      f.dispose();
+    }
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!mounted) return;
+    setState(() {
+      if (!_upiFocus.hasFocus && _upiController.text.trim().isNotEmpty) {
+        _upiTouched = true;
+      }
+    });
+  }
+
+  Future<void> _loadLocalImage() async {
+    try {
+      final f = await LocalImageService.getProfileImage(widget.uid);
+      if (mounted && f != null) setState(() => _existingImage = f);
+    } catch (_) {}
+  }
+
+  /// "+919876543210" -> "+91 98765 43210". Falls back to +91 if the
+  /// provider gave no country code.
+  String _formatVerifiedPhone(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    final local = normalizePhone(raw);
+    final cc = digits.length > 10 ? digits.substring(0, digits.length - 10) : '91';
+    if (local.length != 10) return raw;
+    return '+$cc ${local.substring(0, 5)} ${local.substring(5)}';
   }
 
   void _showError(String message) {
@@ -299,6 +344,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     }
 
     final upi = _upiController.text.trim();
+    setState(() => _upiTouched = true);
     if (upi.isEmpty) {
       _showError('Please enter your UPI ID');
       return;
@@ -359,179 +405,121 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = AppColors.palette.isDark;
+    final busy = _isLoading || _isLoadingProfile;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 40),
-              Text(
-                'One more thing',
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _phoneAlreadyVerified
-                    ? 'We need your UPI ID so you can receive settlement payments.'
-                    : 'We need your phone number so friends can find and split bills with you, and your UPI ID so you can receive settlement payments.',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Full Name',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _nameController,
-                style: GoogleFonts.inter(fontSize: 15),
-                decoration: const InputDecoration(
-                  hintText: 'Your full name',
-                  filled: true,
-                ),
-              ),
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: _pickProfileImage,
-                child: CircleAvatar(
-                  radius: 38,
-                  backgroundColor: AppColors.surface,
-                  backgroundImage: _pickedProfileImage == null
-                      ? null
-                      : FileImage(_pickedProfileImage!),
-                  child: _pickedProfileImage == null
-                      ? const Icon(Icons.add_a_photo_rounded)
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Profile picture (optional)',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (!_phoneAlreadyVerified) ...[
-                Text(
-                  'Phone Number',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+      resizeToAvoidBottomInset: true,
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: (dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+            .copyWith(statusBarColor: Colors.transparent),
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: dark
+                ? null
+                : const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFFEDE9FF), Color(0xFFF5F6FB)],
                   ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                ProfileSetupTopBar(
+                  isLoading: _isLoading,
+                  onBack: _backToLogin,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  onChanged: (_) => setState(() {}),
-                  style: GoogleFonts.inter(fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: '(555) 000-0000',
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    suffixIcon: _phoneIsValid
-                        ? const Icon(Icons.check_circle, color: Colors.green)
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-              Text(
-                'UPI ID',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _upiController,
-                onChanged: (_) => setState(() {}),
-                style: GoogleFonts.inter(fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: 'yourname@bank',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  suffixIcon: _upiIsValid
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _upiPrefilled
-                    ? 'Filled from your saved profile. Edit it to change.'
-                    : 'Used to receive settlement payments via UPI.',
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _isLoading || _isLoadingProfile ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: _isLoading || _isLoadingProfile
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : Text(
-                          'Continue',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const ProfileSetupStepBar(),
+                            const SizedBox(height: 20),
+                            const ProfileSetupHero(),
+                            const SizedBox(height: 20),
+                            ProfileSetupAvatar(
+                              name: _nameController.text.trim(),
+                              image: _avatarImage(),
+                              onTap: _pickProfileImage,
+                            ),
+                            const SizedBox(height: 24),
+                            ProfileDetailsForm(
+                              nameController: _nameController,
+                              phoneController: _phoneController,
+                              upiController: _upiController,
+                              nameFocus: _nameFocus,
+                              phoneFocus: _phoneFocus,
+                              upiFocus: _upiFocus,
+                              phoneAlreadyVerified: _phoneAlreadyVerified,
+                              phoneIsValid: _phoneIsValid,
+                              upiIsValid: _upiIsValid,
+                              upiPrefilled: _upiPrefilled,
+                              upiTouched: _upiTouched,
+                              onChanged: () => setState(() {}),
+                              onApplyHandle: _applyHandle,
+                            ),
+                            const SizedBox(height: 16),
+                            const ProfileTrustLine(),
+                            const SizedBox(height: 20),
+                            GradientButton(
+                              label: 'Complete Profile',
+                              icon: Icons.arrow_forward_rounded,
+                              loading: busy,
+                              onPressed: busy ? null : _submit,
+                            ),
+                          ],
                         ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  bool get _phoneIsValid => normalizePhone(_phoneController.text).length == 10;
+  ImageProvider? _avatarImage() {
+    if (_pickedProfileImage != null) return FileImage(_pickedProfileImage!);
+    if (_existingImage != null) return FileImage(_existingImage!);
+    final url = FirebaseAuth.instance.currentUser?.photoURL;
+    if (url != null && url.isNotEmpty) return NetworkImage(url);
+    return null;
+  }
+
+  /// Adds / swaps the bank handle after '@'. Needs a username first.
+  void _applyHandle(String handle) {
+    final t = _upiController.text.trim();
+    final user = t.contains('@') ? t.split('@').first : t;
+    if (user.isEmpty) {
+      _upiFocus.requestFocus();
+      return;
+    }
+    final next = '$user$handle';
+    setState(() {
+      _upiController.value = TextEditingValue(
+        text: next,
+        selection: TextSelection.collapsed(offset: next.length),
+      );
+      _upiTouched = true;
+      _upiPrefilled = false;
+    });
+  }
+
+  bool get _phoneIsValid =>
+      !_phoneAlreadyVerified && normalizePhone(_phoneController.text).length == 10;
 
   bool get _upiIsValid => isValidUpiFormat(_upiController.text);
 
