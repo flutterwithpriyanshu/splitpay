@@ -1,6 +1,5 @@
 part of 'intro_illustrations.dart';
 
-
 class UpiIllustration extends StatefulWidget {
   const UpiIllustration({super.key});
 
@@ -377,53 +376,43 @@ class _UpiIllustrationState extends State<UpiIllustration> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.touch_app_outlined,
-                        size: 15,
-                        color: AppColors.primary,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.touch_app_outlined,
+                      size: 15,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '1-Tap Deep Link',
+                      style: AppText.bodySm.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '1-Tap Deep Link',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.bodySm.copyWith(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.verified_user_outlined,
-                        size: 15,
-                        color: AppColors.success,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.verified_user_outlined,
+                      size: 15,
+                      color: AppColors.success,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Direct Bank-to-Bank',
+                      style: AppText.bodySm.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Direct Bank-to-Bank',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.bodySm.copyWith(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -8,7 +8,6 @@ import 'package:splitpay/firebase/firebase_options.dart';
 import 'package:splitpay/theme/theme.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
 
-import 'package:splitpay/screens/splash_screen.dart';
 import 'package:splitpay/screens/intro_screen.dart';
 import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/main_shell.dart';
@@ -64,17 +63,9 @@ class _SplitPayAppState extends State<SplitPayApp> {
   }
 
   Future<void> _boot() async {
-    // Keep the splash on screen for a beat while we check whether the
-    // intro has ever been shown on this device. This is a plain state
-    // flag now (not a Navigator push) so it can never swallow the
-    // auth-state StreamBuilder below.
-    final results = await Future.wait([
-      OnboardingPrefs.hasSeenIntro(),
-      Future.delayed(const Duration(milliseconds: 3500)),
-    ]);
+    _seenIntro = await OnboardingPrefs.hasSeenIntro();
     if (!mounted) return;
     setState(() {
-      _seenIntro = results[0] as bool;
       _booting = false;
     });
   }
@@ -105,17 +96,15 @@ class _SplitPayAppState extends State<SplitPayApp> {
               darkTheme: AppTheme.dark,
               themeMode: mode,
               home: _booting
-                  ? const SplashScreen()
+                  ? const _StartupPlaceholder()
                   : !_seenIntro
                   ? IntroScreen(onDone: _onIntroDone)
                   : StreamBuilder<User?>(
                       stream: FirebaseAuth.instance.authStateChanges(),
                       builder: (context, snapshot) {
-                        // Only show the animated splash while Firebase is
-                        // still checking for a cached session.
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const SplashScreen();
+                          return const _StartupPlaceholder();
                         }
                         if (snapshot.hasData) {
                           final user = snapshot.data!;
@@ -130,7 +119,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                             builder: (context, cachedSnap) {
                               if (cachedSnap.connectionState ==
                                   ConnectionState.waiting) {
-                                return const SplashScreen();
+                                return const _StartupPlaceholder();
                               }
                               if (cachedSnap.data == true) {
                                 return const MainShell();
@@ -147,7 +136,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                                 builder: (context, profileSnap) {
                                   if (profileSnap.connectionState ==
                                       ConnectionState.waiting) {
-                                    return const SplashScreen();
+                                    return const _StartupPlaceholder();
                                   }
                                   final profile =
                                       profileSnap.data?.data()
@@ -195,6 +184,18 @@ class _SplitPayAppState extends State<SplitPayApp> {
           },
         );
       },
+    );
+  }
+}
+
+class _StartupPlaceholder extends StatelessWidget {
+  const _StartupPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: const SizedBox.expand(),
     );
   }
 }
