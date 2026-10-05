@@ -103,43 +103,43 @@ class SplashScreen extends StatelessWidget {
       children: [
         // Logo coin + aura
         Stack(
-          alignment: Alignment.center,
-          children: [
-            _glow(160, Colors.white.withValues(alpha: 0.20))
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .fade(begin: 0.5, end: 1, duration: 1000.ms),
-            _glow(128, _kMint.withValues(alpha: 0.25)),
-            _Glass(
-              radius: 24,
-              padding: const EdgeInsets.all(12),
-              fill: Colors.white.withValues(alpha: 0.10),
-              border: Colors.white.withValues(alpha: 0.20),
-              shadow: BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 45,
-                offset: const Offset(0, 20),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Image.asset(
-                  'assets/icon/playstore.png',
-                  width: 96,
-                  height: 96,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const AppLogo(size: 96),
+              alignment: Alignment.center,
+              children: [
+                _glow(160, Colors.white.withValues(alpha: 0.20))
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .fade(begin: 0.5, end: 1, duration: 600.ms),
+                _glow(128, _kMint.withValues(alpha: 0.25)),
+                _Glass(
+                  radius: 24,
+                  padding: const EdgeInsets.all(12),
+                  fill: Colors.white.withValues(alpha: 0.10),
+                  border: Colors.white.withValues(alpha: 0.20),
+                  shadow: BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 45,
+                    offset: const Offset(0, 20),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset(
+                      'assets/icon/playstore.png',
+                      width: 96,
+                      height: 96,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const AppLogo(size: 96),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
-        )
+              ],
+            )
             .animate()
             .scale(
               begin: const Offset(0.85, 0.85),
               end: const Offset(1, 1),
-              duration: 500.ms,
+              duration: 300.ms,
               curve: Curves.easeOutBack,
             )
-            .fadeIn(duration: 400.ms),
+            .fadeIn(duration: 250.ms),
         const SizedBox(height: 24),
         // Wordmark + mint dot
         Row(
@@ -163,13 +163,16 @@ class SplashScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: _kMint,
                   boxShadow: [
-                    BoxShadow(color: _kMint.withValues(alpha: 0.9), blurRadius: 12),
+                    BoxShadow(
+                      color: _kMint.withValues(alpha: 0.9),
+                      blurRadius: 12,
+                    ),
                   ],
                 ),
               ),
             ),
           ],
-        ).animate().fadeIn(delay: 200.ms, duration: 500.ms),
+        ).animate().fadeIn(delay: 100.ms, duration: 250.ms),
         const SizedBox(height: 6),
         Text(
           'Split smart. Settle easy.',
@@ -179,7 +182,7 @@ class SplashScreen extends StatelessWidget {
             fontWeight: FontWeight.w500,
             letterSpacing: 0.4,
           ),
-        ).animate().fadeIn(delay: 300.ms, duration: 500.ms),
+        ).animate().fadeIn(delay: 150.ms, duration: 250.ms),
         const SizedBox(height: 24),
         _Glass(
           radius: 999,
@@ -201,7 +204,7 @@ class SplashScreen extends StatelessWidget {
               ),
             ],
           ),
-        ).animate().fadeIn(delay: 400.ms, duration: 500.ms),
+        ).animate().fadeIn(delay: 200.ms, duration: 250.ms),
       ],
     );
   }
@@ -236,7 +239,6 @@ class SplashScreen extends StatelessWidget {
   }
 }
 
-
 class _PulseDots extends StatefulWidget {
   const _PulseDots();
 
@@ -251,7 +253,7 @@ class _PulseDotsState extends State<_PulseDots> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 450), (_) {
+    _timer = Timer.periodic(const Duration(milliseconds: 300), (_) {
       if (mounted) setState(() => _step++);
     });
   }
@@ -278,19 +280,24 @@ class _PulseDotsState extends State<_PulseDots> {
   Widget _dot({required bool active}) {
     return AnimatedScale(
       scale: active ? 1.35 : 1,
-      duration: 300.ms,
+      duration: 180.ms,
       child: AnimatedOpacity(
         opacity: active ? 1 : 0.65,
-        duration: 300.ms,
+        duration: 180.ms,
         child: AnimatedContainer(
-          duration: 300.ms,
+          duration: 180.ms,
           width: 10,
           height: 10,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: active ? _kMint : Colors.white.withValues(alpha: 0.80),
             boxShadow: active
-                ? [BoxShadow(color: _kMint.withValues(alpha: 0.9), blurRadius: 14)]
+                ? [
+                    BoxShadow(
+                      color: _kMint.withValues(alpha: 0.9),
+                      blurRadius: 14,
+                    ),
+                  ]
                 : const [],
           ),
         ),
@@ -367,31 +374,43 @@ class _WatermarkPainter extends CustomPainter {
 
     dashed(
       Path()..addOval(Rect.fromCircle(center: o, radius: 235)),
-      6, 8, p(Colors.white, 0.5, 1.5),
+      6,
+      8,
+      p(Colors.white, 0.5, 1.5),
     );
     dashed(
       Path()..addOval(Rect.fromCircle(center: o, radius: 185)),
-      14, 10, p(_kMint, 0.4, 1.5),
+      14,
+      10,
+      p(_kMint, 0.4, 1.5),
     );
     canvas.drawCircle(o, 130, p(Colors.white, 0.6, 1));
 
     canvas.drawPath(
       Path()
         ..moveTo(120, 70)
-        ..arcToPoint(const Offset(380, 430), radius: const Radius.circular(230)),
+        ..arcToPoint(
+          const Offset(380, 430),
+          radius: const Radius.circular(230),
+        ),
       p(Colors.white, 0.7, 2.5, round: true),
     );
     canvas.drawPath(
       Path()
         ..moveTo(390, 100)
-        ..arcToPoint(const Offset(110, 390), radius: const Radius.circular(210)),
+        ..arcToPoint(
+          const Offset(110, 390),
+          radius: const Radius.circular(210),
+        ),
       p(_kMint, 0.55, 2, round: true),
     );
     dashed(
       Path()
         ..moveTo(90, 90)
         ..lineTo(410, 410),
-      4, 6, p(Colors.white, 0.3, 1),
+      4,
+      6,
+      p(Colors.white, 0.3, 1),
     );
   }
 

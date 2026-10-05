@@ -21,14 +21,6 @@ import 'package:splitpay/services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await GoogleSignIn.instance.initialize(
-    serverClientId:
-        '183970765607-e598234ffcbgq4ca0ocfvre4f3ou3e5a.apps.googleusercontent.com',
-  );
-  await LocalNotificationService.init();
-  await FcmService.init();
-  await CurrencyPrefs.load();
   await EasyLocalization.ensureInitialized();
   runApp(
     EasyLocalization(
@@ -55,6 +47,7 @@ class SplitPayApp extends StatefulWidget {
 class _SplitPayAppState extends State<SplitPayApp> {
   bool _booting = true;
   bool _seenIntro = false;
+  Object? _startupError;
   final Set<String> _justCompletedProfileUids = {};
 
   @override
@@ -64,7 +57,22 @@ class _SplitPayAppState extends State<SplitPayApp> {
   }
 
   Future<void> _boot() async {
-    _seenIntro = await OnboardingPrefs.hasSeenIntro();
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      await GoogleSignIn.instance.initialize(
+        serverClientId:
+            '183970765607-e598234ffcbgq4ca0ocfvre4f3ou3e5a.apps.googleusercontent.com',
+      );
+      await LocalNotificationService.init();
+      await FcmService.init();
+      await CurrencyPrefs.load();
+      _seenIntro = await OnboardingPrefs.hasSeenIntro();
+    } catch (error, stackTrace) {
+      debugPrint('App startup failed: $error\n$stackTrace');
+      _startupError = error;
+    }
     if (!mounted) return;
     setState(() {
       _booting = false;
@@ -96,7 +104,9 @@ class _SplitPayAppState extends State<SplitPayApp> {
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
               themeMode: mode,
-              home: _booting
+              home: _startupError != null
+                  ? _StartupError(error: _startupError!)
+                  : _booting
                   ? const SplashScreen()
                   : !_seenIntro
                   ? IntroScreen(onDone: _onIntroDone)
@@ -112,9 +122,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                           if (_justCompletedProfileUids.contains(user.uid)) {
                             return const MainShell();
                           }
-                          // Local cache first — instant, no Firestore round
-                          // trip, so a returning user never flickers through
-                          // complete-profile again after their first launch.
+
                           return FutureBuilder<bool>(
                             future: ProfilePrefs.isProfileComplete(user.uid),
                             builder: (context, cachedSnap) {
@@ -125,10 +133,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                               if (cachedSnap.data == true) {
                                 return const MainShell();
                               }
-                              // authStateChanges fires the moment sign-in succeeds —
-                              // before we know whether a users/{uid} doc exists yet.
-                              // Check it here too, or brand-new users race straight
-                              // past complete-profile into MainShell with nothing saved.
+
                               return FutureBuilder<DocumentSnapshot>(
                                 future: FirebaseFirestore.instance
                                     .collection('users')
@@ -158,9 +163,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                                               .isNotEmpty ==
                                           true;
                                   if (hasCompleteProfile) {
-                                    // Older accounts that completed their
-                                    // profile before this local cache existed
-                                    // — backfill it so next launch is instant.
+                                    
                                     ProfilePrefs.setProfileComplete(user.uid);
                                     return const MainShell();
                                   }
@@ -185,6 +188,24 @@ class _SplitPayAppState extends State<SplitPayApp> {
           },
         );
       },
+    );
+  }
+}
+
+class _StartupError extends StatelessWidget {
+  const _StartupError({required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('Unable to start the app: $error'),
+        ),
+      ),
     );
   }
 }
