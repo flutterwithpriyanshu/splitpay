@@ -20,7 +20,7 @@ Flutter app `splitpay`: bill split + UPI settle-up. Task = redesign UI screen-by
 - Remind full restart (`q`, `flutter run`) when assets, State classes, `main.dart` change.
 - Image placeholders / render bugs (empty `img`, duplicate bell, flat nav) → fix sensibly, tell user.
 - Source files CRLF; outputs LF fine. Edit via python replace on `\r\n`-normalized text; assert each old string exists.
-- Log each task: 1 line in section 8.
+- EVERY task (UI, feature, fix, even tiny) → update this md before reply: add 1 line in section 8, refresh sections 4/5/7 if files/status/pending changed, send `docs/handoff.md` via `present_files` with changed files. No exception. Never skip.
 
 ## 2. Design system ("Electric Modern Fintech")
 
@@ -49,15 +49,16 @@ Flutter app `splitpay`: bill split + UPI settle-up. Task = redesign UI screen-by
 - `lib/theme/{app_colors,app_text,theme,theme_notifier}.dart`
 - `lib/widgets/{app_ui,app_logo,intro_illustrations,local_avatar,edit_profile_screen,manage_friends_screen,login_method_badge,day_of_month_picker}.dart`
 - `lib/core/`: `app_notification` (model), `notification_feed` (builds feed from streams, exports model), `notification_store` (local JSON file `notifications_<uid>.json`, path*provider; delete/clearIds/sync), `time_ago`, `app_currency`, `onboarding_prefs`, `profile_prefs`, `app_toast`, `debt_simplifier`, `upi*\*`, `phone_utils`, `money_format`, `app_date_format`, `bill_category`, `notification_prefs`
-- `lib/services/`: bill, friend, group, transaction, upi, fcm, local_notification, local_image
+- `lib/services/`: bill, friend, group, transaction, upi, fcm, local_notification, local_image, reminder
 - `lib/model/`: bill, friend, group, transaction
-- `lib/screens/`: splash, intro, auth, complete_profile, main_shell, home, friends, groups, wallet, add_bill, add_group_bill, edit_bill, bill_detail, friend_details, group_details, shared_group_details, edit_group_settings, group_settle_up, group_splitup, settings, static_content. Subwidgets in `lib/screens/<name>/widgets/`.
+- `lib/screens/`: splash, intro, auth, complete_profile, main_shell, home, friends, groups, wallet, add_bill, add_group_bill, edit_bill, bill_detail, friend_details, group_details, shared_group_details, edit_group_settings, group_settle_up, group_splitup, settings, static_content. Subwidgets in `lib/screens/<name>/widgets/` (e.g. `group_settle_up/widgets/remind_sheet.dart`).
 - Deps: firebase_core/auth, cloud_firestore, google_sign_in (new API `GoogleSignIn.instance.authenticate()`), easy_localization (en hi es fr), flutter_animate, google_fonts, shared_preferences.
 - Test device `CPH2035` Android, Impeller, density 3.
 
 ## 5. Status
 
 DONE: theme/_, widgets/app_ui, app_logo, intro_illustrations, main_shell (dock), splash, intro, auth, auth/security_check_screen, home (+ `home/widgets/{balance_card,balance_card_parts,home_header,quick_split,activity_tile,notification_bell}`), notifications (+ local file store, swipe delete, clear all).
+FEATURE DONE: payment reminder in `group_settle_up_screen` (in-app doc + WhatsApp + copy, 6h cooldown).
 TODO (in order, user sends image each): complete_profile, friends, groups, wallet, add_bill, settings, then detail/edit screens, then `screens/_/widgets`.
 Home notes: `home_screen.dart`still ~1000 lines (split pending, user not yet approved).`balance_card_parts.dart`breaks split rule → rename to`ring_painter.dart`, `stat_tile.dart`, `card_button.dart` (user not yet approved).
 
@@ -80,6 +81,8 @@ Home notes: `home_screen.dart`still ~1000 lines (split pending, user not yet app
 - Auth: Terms/Privacy no tap handler; intro "Log in" only finishes intro.
 - Unused (ask before delete): `lib/widgets/auth_form.dart`, `lib/screens/auth/widgets/auth_form.dart`.
 - New features: ask user after all UI images done.
+- Reminder: Cloud Function `onWrite reminders/{id}` → FCM to `fromUid` `fcmToken` (not written yet). Firestore rule: write if `request.auth.uid == request.resource.data.toUid`. WhatsApp uses `wa.me/91` hardcoded.
+- `group_settle_up_screen.dart` not restyled to image (still `GoogleFonts.inter`, hardcoded radii). Restyle next: match image (balance banner, pay/get sections, filter tabs). Optional "Remind all".
 
 ## 8. Task log (1 line each, newest last)
 
@@ -88,6 +91,8 @@ Home notes: `home_screen.dart`still ~1000 lines (split pending, user not yet app
 - Home 2nd pass match image (sizes/weights, promo card, page pad 16) → same files
 - Split-naming rule added
 - Notifications screen: image match, local file store, swipe-right delete, clear all → `core/{app_notification,notification_store,notification_feed,time_ago}.dart`, `screens/notifications_screen.dart`, `screens/notifications/widgets/*` (13 files)
+- Rule added: every task updates `docs/handoff.md`
+- Settle Up reminder feature → `services/reminder_service.dart`, `screens/group_settle_up/widgets/remind_sheet.dart`, `screens/group_settle_up_screen.dart` (Remind button on rows owed to me)
 
 ## 9. Per-screen workflow
 
