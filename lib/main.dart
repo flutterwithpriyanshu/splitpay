@@ -70,7 +70,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
     // auth-state StreamBuilder below.
     final results = await Future.wait([
       OnboardingPrefs.hasSeenIntro(),
-      Future.delayed(const Duration(milliseconds: 2000)),
+      Future.delayed(const Duration(milliseconds: 3500)),
     ]);
     if (!mounted) return;
     setState(() {

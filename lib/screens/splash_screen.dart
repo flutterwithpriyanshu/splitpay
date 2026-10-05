@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,30 +12,8 @@ const _kVioletMid = Color(0xFF6D4CF6);
 const _kViolet2 = Color(0xFF8E5BFF);
 const _kMint = Color(0xFF34D399);
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  Timer? _timer;
-  int _step = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 450), (_) {
-      if (mounted) setState(() => _step++);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,26 +103,35 @@ class _SplashScreenState extends State<SplashScreen> {
       children: [
         // Logo coin + aura
         Stack(
-              alignment: Alignment.center,
-              children: [
-                _glow(160, Colors.white.withValues(alpha: 0.20))
-                    .animate(onPlay: (c) => c.repeat(reverse: true))
-                    .fade(begin: 0.5, end: 1, duration: 1000.ms),
-                _glow(128, _kMint.withValues(alpha: 0.25)),
-                _Glass(
-                  radius: 24,
-                  padding: const EdgeInsets.all(12),
-                  fill: Colors.white.withValues(alpha: 0.10),
-                  border: Colors.white.withValues(alpha: 0.20),
-                  shadow: BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 45,
-                    offset: const Offset(0, 20),
-                  ),
-                  child: const AppLogo(size: 96),
+          alignment: Alignment.center,
+          children: [
+            _glow(160, Colors.white.withValues(alpha: 0.20))
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .fade(begin: 0.5, end: 1, duration: 1000.ms),
+            _glow(128, _kMint.withValues(alpha: 0.25)),
+            _Glass(
+              radius: 24,
+              padding: const EdgeInsets.all(12),
+              fill: Colors.white.withValues(alpha: 0.10),
+              border: Colors.white.withValues(alpha: 0.20),
+              shadow: BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 45,
+                offset: const Offset(0, 20),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.asset(
+                  'assets/icon/playstore.png',
+                  width: 96,
+                  height: 96,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const AppLogo(size: 96),
                 ),
-              ],
-            )
+              ),
+            ),
+          ],
+        )
             .animate()
             .scale(
               begin: const Offset(0.85, 0.85),
@@ -177,10 +163,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   shape: BoxShape.circle,
                   color: _kMint,
                   boxShadow: [
-                    BoxShadow(
-                      color: _kMint.withValues(alpha: 0.9),
-                      blurRadius: 12,
-                    ),
+                    BoxShadow(color: _kMint.withValues(alpha: 0.9), blurRadius: 12),
                   ],
                 ),
               ),
@@ -229,15 +212,7 @@ class _SplashScreenState extends State<SplashScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < 3; i++) ...[
-                if (i > 0) const SizedBox(width: 10),
-                _dot(active: _step % 3 == i),
-              ],
-            ],
-          ),
+          const _PulseDots(),
           const SizedBox(height: 16),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -259,6 +234,46 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
+}
+
+
+class _PulseDots extends StatefulWidget {
+  const _PulseDots();
+
+  @override
+  State<_PulseDots> createState() => _PulseDotsState();
+}
+
+class _PulseDotsState extends State<_PulseDots> {
+  Timer? _timer;
+  int _step = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 450), (_) {
+      if (mounted) setState(() => _step++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < 3; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          _dot(active: _step % 3 == i),
+        ],
+      ],
+    );
+  }
 
   Widget _dot({required bool active}) {
     return AnimatedScale(
@@ -275,12 +290,7 @@ class _SplashScreenState extends State<SplashScreen> {
             shape: BoxShape.circle,
             color: active ? _kMint : Colors.white.withValues(alpha: 0.80),
             boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: _kMint.withValues(alpha: 0.9),
-                      blurRadius: 14,
-                    ),
-                  ]
+                ? [BoxShadow(color: _kMint.withValues(alpha: 0.9), blurRadius: 14)]
                 : const [],
           ),
         ),
@@ -289,7 +299,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-/// Frosted glass container: blur 12 + translucent fill + hairline border.
+/// Glass-look container: translucent fill + hairline border (no blur).
 class _Glass extends StatelessWidget {
   const _Glass({
     required this.child,
@@ -315,20 +325,15 @@ class _Glass extends StatelessWidget {
         borderRadius: r,
         boxShadow: shadow == null ? null : [shadow!],
       ),
-      child: ClipRRect(
-        borderRadius: r,
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: fill,
-              borderRadius: r,
-              border: Border.all(color: border),
-            ),
-            child: child,
-          ),
+      // No BackdropFilter: it renders blank on some Impeller/GLES devices.
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: r,
+          border: Border.all(color: border),
         ),
+        child: child,
       ),
     );
   }
@@ -362,43 +367,31 @@ class _WatermarkPainter extends CustomPainter {
 
     dashed(
       Path()..addOval(Rect.fromCircle(center: o, radius: 235)),
-      6,
-      8,
-      p(Colors.white, 0.5, 1.5),
+      6, 8, p(Colors.white, 0.5, 1.5),
     );
     dashed(
       Path()..addOval(Rect.fromCircle(center: o, radius: 185)),
-      14,
-      10,
-      p(_kMint, 0.4, 1.5),
+      14, 10, p(_kMint, 0.4, 1.5),
     );
     canvas.drawCircle(o, 130, p(Colors.white, 0.6, 1));
 
     canvas.drawPath(
       Path()
         ..moveTo(120, 70)
-        ..arcToPoint(
-          const Offset(380, 430),
-          radius: const Radius.circular(230),
-        ),
+        ..arcToPoint(const Offset(380, 430), radius: const Radius.circular(230)),
       p(Colors.white, 0.7, 2.5, round: true),
     );
     canvas.drawPath(
       Path()
         ..moveTo(390, 100)
-        ..arcToPoint(
-          const Offset(110, 390),
-          radius: const Radius.circular(210),
-        ),
+        ..arcToPoint(const Offset(110, 390), radius: const Radius.circular(210)),
       p(_kMint, 0.55, 2, round: true),
     );
     dashed(
       Path()
         ..moveTo(90, 90)
         ..lineTo(410, 410),
-      4,
-      6,
-      p(Colors.white, 0.3, 1),
+      4, 6, p(Colors.white, 0.3, 1),
     );
   }
 
