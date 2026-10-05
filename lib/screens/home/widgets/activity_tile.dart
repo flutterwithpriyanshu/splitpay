@@ -73,19 +73,19 @@ class ActivityTile extends StatelessWidget {
           borderRadius: radius,
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: visual.bg,
-                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(visual.icon, color: visual.color, size: 26),
+                  child: Icon(visual.icon, color: visual.color, size: 22),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,9 +94,10 @@ class ActivityTile extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.headlineSm.copyWith(
+                        style: AppText.labelLg.copyWith(
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -104,7 +105,7 @@ class ActivityTile extends StatelessWidget {
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.bodyMd.copyWith(
+                        style: AppText.bodySm.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -117,8 +118,9 @@ class ActivityTile extends StatelessWidget {
                   children: [
                     Text(
                       amountText,
-                      style: AppText.headlineMd
+                      style: AppText.headlineSm
                           .copyWith(
+                            fontSize: 18,
                             color: amountColor,
                             fontWeight: FontWeight.w800,
                           )
@@ -127,8 +129,8 @@ class ActivityTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 8,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: pillBg,
@@ -137,11 +139,14 @@ class ActivityTile extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(pillIcon, size: 14, color: pillFg),
+                          Icon(pillIcon, size: 12, color: pillFg),
                           const SizedBox(width: 4),
                           Text(
                             settled ? settledLabel : pendingLabel,
-                            style: AppText.labelMd.copyWith(color: pillFg),
+                            style: AppText.labelSm.copyWith(
+                              color: pillFg,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),

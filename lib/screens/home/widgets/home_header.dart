@@ -31,7 +31,7 @@ class HomeTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 68,
+      height: 62,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -41,7 +41,7 @@ class HomeTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const AppLogo(size: 42),
+          const AppLogo(size: 34),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -50,14 +50,16 @@ class HomeTopBar extends StatelessWidget {
               children: [
                 Text(
                   'SplitPay',
-                  style: AppText.labelMd.copyWith(
+                  style: AppText.labelSm.copyWith(
                     color: AppColors.textSecondary,
                     height: 1.1,
                   ),
                 ),
                 Text(
                   'Home',
-                  style: AppText.headlineMd.copyWith(
+                  style: AppText.headlineSm.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                     height: 1.1,
                   ),
@@ -78,7 +80,7 @@ class HomeTopBar extends StatelessWidget {
                   width: 2,
                 ),
               ),
-              child: LocalAvatar(localKey: myUid, isProfile: true, radius: 18),
+              child: LocalAvatar(localKey: myUid, isProfile: true, radius: 15),
             ),
           ),
         ],
@@ -162,8 +164,8 @@ class _HomeGreetingState extends State<HomeGreeting>
         GestureDetector(
           onTap: widget.onProfileTap,
           child: SizedBox(
-            width: 68,
-            height: 68,
+            width: 54,
+            height: 54,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -180,15 +182,15 @@ class _HomeGreetingState extends State<HomeGreeting>
                   child: LocalAvatar(
                     localKey: widget.myUid,
                     isProfile: true,
-                    radius: 29,
+                    radius: 22,
                   ),
                 ),
                 Positioned(
                   right: 2,
                   bottom: 2,
                   child: Container(
-                    width: 16,
-                    height: 16,
+                    width: 14,
+                    height: 14,
                     decoration: BoxDecoration(
                       color: AppColors.success,
                       shape: BoxShape.circle,
@@ -203,23 +205,27 @@ class _HomeGreetingState extends State<HomeGreeting>
             ),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Welcome back',
-                style: AppText.bodyMd.copyWith(color: AppColors.textSecondary),
+                style: AppText.bodyMd.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 '$_salutation, $_firstName',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.headlineLg.copyWith(
+                style: AppText.headlineSm.copyWith(
                   color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -230,8 +236,8 @@ class _HomeGreetingState extends State<HomeGreeting>
           customBorder: const CircleBorder(),
           onTap: widget.onToggleHidden,
           child: Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: AppColors.primaryTint,
               shape: BoxShape.circle,
@@ -241,7 +247,7 @@ class _HomeGreetingState extends State<HomeGreeting>
                   ? Icons.visibility_off_outlined
                   : Icons.visibility_outlined,
               color: AppColors.primary,
-              size: 22,
+              size: 20,
             ),
           ),
         ),

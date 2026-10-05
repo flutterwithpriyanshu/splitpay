@@ -46,9 +46,12 @@ class QuickSplitStrip extends StatelessWidget {
           children: [
             Text(
               'Quick Split',
-              style: AppText.headlineMd.copyWith(color: AppColors.textPrimary),
+              style: AppText.headlineSm.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             if (friends.isNotEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -58,7 +61,7 @@ class QuickSplitStrip extends StatelessWidget {
                 ),
                 child: Text(
                   '${friends.length}',
-                  style: AppText.labelMd
+                  style: AppText.labelSm
                       .copyWith(color: AppColors.textSecondary)
                       .tabular,
                 ),
@@ -73,15 +76,15 @@ class QuickSplitStrip extends StatelessWidget {
                   children: [
                     Text(
                       'View all',
-                      style: AppText.labelLg.copyWith(
+                      style: AppText.labelMd.copyWith(
                         color: AppColors.primary,
-                        fontSize: 15,
+                        fontSize: 13,
                       ),
                     ),
                     Icon(
                       Icons.chevron_right_rounded,
                       color: AppColors.primary,
-                      size: 20,
+                      size: 18,
                     ),
                   ],
                 ),
@@ -89,16 +92,16 @@ class QuickSplitStrip extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 142,
+          height: 124,
           child: loading
               ? _skeleton()
               : ListView.separated(
                   scrollDirection: Axis.horizontal,
                   clipBehavior: Clip.none,
                   itemCount: friends.length + 1,
-                  separatorBuilder: (_, _) => const SizedBox(width: 18),
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) {
                     if (i == 0) return _AddNew(onTap: onAdd);
                     final q = friends[i - 1];
@@ -118,12 +121,12 @@ class QuickSplitStrip extends StatelessWidget {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
       itemCount: 5,
-      separatorBuilder: (_, _) => const SizedBox(width: 18),
+      separatorBuilder: (_, _) => const SizedBox(width: 12),
       itemBuilder: (_, _) => Column(
         children: [
           Container(
-            width: 68,
-            height: 68,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
               color: AppColors.textSecondary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
@@ -153,12 +156,12 @@ class _AddNew extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 74,
+        width: 66,
         child: Column(
           children: [
             Container(
-              width: 70,
-              height: 70,
+              width: 58,
+              height: 58,
               decoration: BoxDecoration(
                 color: AppColors.primaryTint,
                 shape: BoxShape.circle,
@@ -166,13 +169,16 @@ class _AddNew extends StatelessWidget {
               child: Icon(
                 Icons.person_add_alt_1_rounded,
                 color: AppColors.primary,
-                size: 28,
+                size: 24,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               'Add new',
-              style: AppText.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppText.bodySm.copyWith(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -229,12 +235,12 @@ class _FriendItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 78,
+        width: 70,
         child: Column(
           children: [
             SizedBox(
-              width: 74,
-              height: 74,
+              width: 58,
+              height: 58,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -253,15 +259,15 @@ class _FriendItem extends StatelessWidget {
                       localKey: item.friend.id,
                       isProfile: false,
                       fallbackUrl: item.friend.avatarUrl,
-                      radius: 32,
+                      radius: 25,
                     ),
                   ),
                   Positioned(
                     right: 0,
                     bottom: 0,
                     child: Container(
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
                         color: badgeBg,
                         shape: BoxShape.circle,
@@ -270,7 +276,7 @@ class _FriendItem extends StatelessWidget {
                           width: 2.5,
                         ),
                       ),
-                      child: Icon(badgeIcon, size: 13, color: badgeFg),
+                      child: Icon(badgeIcon, size: 11, color: badgeFg),
                     ),
                   ),
                 ],
@@ -281,11 +287,14 @@ class _FriendItem extends StatelessWidget {
               item.friend.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppText.bodyMd.copyWith(color: AppColors.textPrimary),
+              style: AppText.bodySm.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: pillBg,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -293,7 +302,9 @@ class _FriendItem extends StatelessWidget {
               child: Text(
                 pillText,
                 maxLines: 1,
-                style: AppText.labelMd.copyWith(color: pillFg).tabular,
+                style: AppText.labelSm
+                    .copyWith(color: pillFg, fontSize: 12)
+                    .tabular,
               ),
             ),
           ],

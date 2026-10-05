@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -49,6 +51,10 @@ class _SplitPayAppState extends State<SplitPayApp> {
   bool _seenIntro = false;
   Object? _startupError;
   final Set<String> _justCompletedProfileUids = {};
+  final Map<String, Future<bool>> _profileCompletionChecks = {};
+  final Map<String, Future<DocumentSnapshot<Map<String, dynamic>>>>
+  _profileDocumentChecks = {};
+  Stream<User?>? _authStateChanges;
 
   @override
   void initState() {
@@ -61,12 +67,11 @@ class _SplitPayAppState extends State<SplitPayApp> {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      _authStateChanges = FirebaseAuth.instance.authStateChanges();
       await GoogleSignIn.instance.initialize(
         serverClientId:
             '183970765607-e598234ffcbgq4ca0ocfvre4f3ou3e5a.apps.googleusercontent.com',
       );
-      await LocalNotificationService.init();
-      await FcmService.init();
       await CurrencyPrefs.load();
       _seenIntro = await OnboardingPrefs.hasSeenIntro();
     } catch (error, stackTrace) {
@@ -77,6 +82,54 @@ class _SplitPayAppState extends State<SplitPayApp> {
     setState(() {
       _booting = false;
     });
+    if (_startupError == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_initializeOptionalServices());
+      });
+    }
+  }
+
+  Future<void> _initializeOptionalServices() async {
+    try {
+      await LocalNotificationService.init();
+    } catch (error, stackTrace) {
+      debugPrint('Local notifications unavailable: $error\n$stackTrace');
+    }
+
+    try {
+      await FcmService.init();
+    } catch (error, stackTrace) {
+      debugPrint('Push notifications unavailable: $error\n$stackTrace');
+    }
+  }
+
+  Future<bool> _isProfileComplete(String uid) =>
+      _profileCompletionChecks.putIfAbsent(
+        uid,
+        () => ProfilePrefs.isProfileComplete(uid),
+      );
+
+  Future<DocumentSnapshot<Map<String, dynamic>>> _loadProfile(String uid) =>
+      _profileDocumentChecks.putIfAbsent(
+        uid,
+        () => FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      );
+
+  void _retryProfileLoad(String uid) {
+    _profileCompletionChecks.remove(uid);
+    _profileDocumentChecks.remove(uid);
+    setState(() {});
+  }
+
+  void _cacheProfileComplete(String uid) {
+    unawaited(
+      ProfilePrefs.setProfileComplete(uid).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        debugPrint('Could not cache profile completion: $error\n$stackTrace');
+      }),
+    );
   }
 
   void _onIntroDone() {
@@ -111,7 +164,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                   : !_seenIntro
                   ? IntroScreen(onDone: _onIntroDone)
                   : StreamBuilder<User?>(
-                      stream: FirebaseAuth.instance.authStateChanges(),
+                      stream: _authStateChanges,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -124,7 +177,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                           }
 
                           return FutureBuilder<bool>(
-                            future: ProfilePrefs.isProfileComplete(user.uid),
+                            future: _isProfileComplete(user.uid),
                             builder: (context, cachedSnap) {
                               if (cachedSnap.connectionState ==
                                   ConnectionState.waiting) {
@@ -134,19 +187,23 @@ class _SplitPayAppState extends State<SplitPayApp> {
                                 return const MainShell();
                               }
 
-                              return FutureBuilder<DocumentSnapshot>(
-                                future: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(user.uid)
-                                    .get(),
+                              return FutureBuilder<
+                                DocumentSnapshot<Map<String, dynamic>>
+                              >(
+                                future: _loadProfile(user.uid),
                                 builder: (context, profileSnap) {
                                   if (profileSnap.connectionState ==
                                       ConnectionState.waiting) {
                                     return const SplashScreen();
                                   }
-                                  final profile =
-                                      profileSnap.data?.data()
-                                          as Map<String, dynamic>?;
+                                  if (profileSnap.hasError) {
+                                    return _ProfileLoadError(
+                                      error: profileSnap.error!,
+                                      onRetry: () =>
+                                          _retryProfileLoad(user.uid),
+                                    );
+                                  }
+                                  final profile = profileSnap.data?.data();
                                   final hasCompleteProfile =
                                       profileSnap.hasData &&
                                       profileSnap.data!.exists &&
@@ -163,8 +220,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                                               .isNotEmpty ==
                                           true;
                                   if (hasCompleteProfile) {
-                                    
-                                    ProfilePrefs.setProfileComplete(user.uid);
+                                    _cacheProfileComplete(user.uid);
                                     return const MainShell();
                                   }
                                   return CompleteProfileScreen(
@@ -204,6 +260,41 @@ class _StartupError extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text('Unable to start the app: $error'),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileLoadError extends StatelessWidget {
+  const _ProfileLoadError({required this.error, required this.onRetry});
+
+  final Object error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Could not load your profile. Check your connection.'),
+              const SizedBox(height: 12),
+              Text(
+                '$error',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
     );

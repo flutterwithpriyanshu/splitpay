@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -117,7 +118,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   String _formatVerifiedPhone(String raw) {
     final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
     final local = normalizePhone(raw);
-    final cc = digits.length > 10 ? digits.substring(0, digits.length - 10) : '91';
+    final cc = digits.length > 10
+        ? digits.substring(0, digits.length - 10)
+        : '91';
     if (local.length != 10) return raw;
     return '+$cc ${local.substring(0, 5)} ${local.substring(5)}';
   }
@@ -129,8 +132,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   /// Fills the form from a saved profile map. [overwrite] true = own doc
   /// (saved values win). false = borrowed from another account of the same
   /// verified person (only fills empty fields).
-  void _applySavedProfile(Map<String, dynamic> profile,
-      {required bool overwrite}) {
+  void _applySavedProfile(
+    Map<String, dynamic> profile, {
+    required bool overwrite,
+  }) {
     final savedName = (profile['fullName'] as String?)?.trim() ?? '';
     final savedPhone = (profile['phoneNumber'] as String?)?.trim() ?? '';
     final savedUpi = (profile['upiId'] as String?)?.trim() ?? '';
@@ -194,7 +199,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   /// Method of the login being used right now, from Firebase Auth.
   String get _currentSignInMethod {
-    final ids = FirebaseAuth.instance.currentUser?.providerData
+    final ids =
+        FirebaseAuth.instance.currentUser?.providerData
             .map((p) => p.providerId)
             .toSet() ??
         <String>{};
@@ -235,7 +241,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Number already in use'),
-        content: Text('This number already belongs to an existing account. $hint'),
+        content: Text(
+          'This number already belongs to an existing account. $hint',
+        ),
         actions: [
           if (!verifiedPhone)
             TextButton(
@@ -280,8 +288,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       final profile = doc.data();
       if (profile != null) {
         _hasExistingProfile = true;
-        _savedOwnPhone =
-            normalizePhone((profile['phoneNumber'] as String?) ?? '');
+        _savedOwnPhone = normalizePhone(
+          (profile['phoneNumber'] as String?) ?? '',
+        );
         _applySavedProfile(profile, overwrite: true);
       }
 
@@ -377,21 +386,17 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           .doc(widget.uid)
           .set(profileData, SetOptions(merge: true));
       profileSaved = true;
-      await ProfilePrefs.saveUpi(widget.uid, upi);
-
-      if (_pickedProfileImage != null) {
-        await LocalImageService.saveProfileImage(
-          widget.uid,
-          await _pickedProfileImage!.readAsBytes(),
+      try {
+        await ProfilePrefs.setProfileComplete(widget.uid);
+      } catch (error, stackTrace) {
+        debugPrint(
+          'Could not cache profile completion: $error\n$stackTrace',
         );
       }
 
-      await FcmService.saveTokenForCurrentUser();
-
-      await ProfilePrefs.setProfileComplete(widget.uid);
-
       if (!mounted) return;
       widget.onDone();
+      unawaited(_saveOptionalProfileData(upi));
     } catch (e) {
       _showError(
         profileSaved
@@ -428,10 +433,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
           child: SafeArea(
             child: Column(
               children: [
-                ProfileSetupTopBar(
-                  isLoading: _isLoading,
-                  onBack: _backToLogin,
-                ),
+                ProfileSetupTopBar(isLoading: _isLoading, onBack: _backToLogin),
                 Expanded(
                   child: SingleChildScrollView(
                     keyboardDismissBehavior:
@@ -519,9 +521,36 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   }
 
   bool get _phoneIsValid =>
-      !_phoneAlreadyVerified && normalizePhone(_phoneController.text).length == 10;
+      !_phoneAlreadyVerified &&
+      normalizePhone(_phoneController.text).length == 10;
 
   bool get _upiIsValid => isValidUpiFormat(_upiController.text);
+
+  Future<void> _saveOptionalProfileData(String upi) async {
+    try {
+      await ProfilePrefs.saveUpi(widget.uid, upi);
+    } catch (error, stackTrace) {
+      debugPrint('Could not cache UPI ID: $error\n$stackTrace');
+    }
+
+    final image = _pickedProfileImage;
+    if (image != null) {
+      try {
+        await LocalImageService.saveProfileImage(
+          widget.uid,
+          await image.readAsBytes(),
+        );
+      } catch (error, stackTrace) {
+        debugPrint('Could not save profile image: $error\n$stackTrace');
+      }
+    }
+
+    try {
+      await FcmService.saveTokenForCurrentUser();
+    } catch (error, stackTrace) {
+      debugPrint('Could not save push notification token: $error\n$stackTrace');
+    }
+  }
 
   Future<void> _pickProfileImage() async {
     final picked = await ImagePicker().pickImage(

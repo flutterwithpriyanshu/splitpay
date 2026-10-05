@@ -325,9 +325,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                   child: ListView(
                                     padding: const EdgeInsets.fromLTRB(
-                                      20,
                                       16,
-                                      20,
+                                      12,
+                                      16,
                                       120,
                                     ),
                                     children: [
@@ -454,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           Text(
             'Settle up with',
-            style: AppText.headlineMd.copyWith(color: AppColors.textPrimary),
+            style: AppText.headlineSm.copyWith(color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
@@ -571,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               label,
-              style: AppText.bodyLg.copyWith(color: AppColors.textSecondary),
+              style: AppText.bodyMd.copyWith(color: AppColors.textSecondary),
             ),
           ),
           Text(
@@ -593,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           Text(
             'Analytics',
-            style: AppText.headlineMd.copyWith(color: AppColors.textPrimary),
+            style: AppText.headlineSm.copyWith(color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
@@ -647,7 +647,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () => setState(() => _filter = f),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
             color: selected ? AppColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -671,7 +671,10 @@ class _HomeScreenState extends State<HomeScreen> {
             'recent_activity'.tr(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppText.headlineMd.copyWith(color: AppColors.textPrimary),
+            style: AppText.headlineSm.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -893,21 +896,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _newGroupPromo() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.primaryTint,
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.inner + 2),
+              color: AppColors.primary.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
             ),
-            child: Icon(Icons.group_add_outlined, color: AppColors.primary),
+            child: Icon(
+              Icons.person_add_alt_1_outlined,
+              size: 20,
+              color: AppColors.primary,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -918,14 +925,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Planning a trip or weekend outing?',
                   style: AppText.labelLg.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Split hotel, cabs, or dinner easily with a group pool.',
-                  style: AppText.bodyMd.copyWith(
+                  style: AppText.bodySm.copyWith(
                     color: AppColors.textSecondary,
+                    fontSize: 12.5,
                   ),
                 ),
               ],
@@ -936,14 +945,17 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(AppRadius.pill),
             onTap: () => GroupsScreen.showCreateGroupSheet(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.14),
+                color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: Text(
                 '+ New Group',
-                style: AppText.labelMd.copyWith(color: AppColors.primary),
+                style: AppText.labelMd.copyWith(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
