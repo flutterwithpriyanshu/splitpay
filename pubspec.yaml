@@ -33,6 +33,7 @@ dependencies:
   google_sign_in: ^7.1.1
   image_picker: ^1.2.3
   path_provider: ^2.1.6
+  phone_numbers_parser: ^9.0.28
   shared_preferences: ^2.3.2
   timezone: ^0.11.1
   url_launcher: ^6.3.2
