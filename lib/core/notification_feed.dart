@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:splitpay/core/app_notification.dart';
+import 'package:splitpay/core/notification_store.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/model/group.dart';
@@ -9,66 +11,7 @@ import 'package:splitpay/services/friend_service.dart';
 import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/transaction_service.dart';
 
-enum NotifKind {
-  paymentRequest,
-  paymentReceived,
-  paymentSent,
-  expenseAdded,
-  groupReminder,
-  simplified,
-  security,
-}
-
-/// One row in the notification feed. Built client-side from data the app
-/// already streams (bills, transactions, groups). Nothing new is stored in
-/// Firestore. "Unread" = newer than [notificationLastSeenNotifier].
-class AppNotification {
-  final String id;
-  final NotifKind kind;
-  final DateTime time;
-
-  /// Other person's name (requester, payer, creator ...).
-  final String? actor;
-  final String? billTitle;
-  final String? groupName;
-
-  /// Main amount (requested, received, sent, owed ...).
-  final double amount;
-
-  /// Total bill amount (expenseAdded).
-  final double billAmount;
-
-  /// My share of the bill (expenseAdded).
-  final double share;
-  final String? ref;
-  final String? note;
-  final bool urgent;
-  final Bill? bill;
-  final Friend? friend;
-  final Group? group;
-
-  const AppNotification({
-    required this.id,
-    required this.kind,
-    required this.time,
-    this.actor,
-    this.billTitle,
-    this.groupName,
-    this.amount = 0,
-    this.billAmount = 0,
-    this.share = 0,
-    this.ref,
-    this.note,
-    this.urgent = false,
-    this.bill,
-    this.friend,
-    this.group,
-  });
-
-  bool get isPendingAction =>
-      kind == NotifKind.paymentRequest ||
-      (kind == NotifKind.groupReminder && amount > 0.009);
-}
+export 'package:splitpay/core/app_notification.dart';
 
 /// Last time a group's settle-up day (10:00) happened, this month or last.
 DateTime _lastSettleOccurrence(int day, DateTime now) {
@@ -297,6 +240,17 @@ class _NotificationFeedScopeState extends State<NotificationFeedScope> {
       GroupService.streamSharedGroups();
 
   @override
+  void initState() {
+    super.initState();
+    NotificationStore.instance.load(
+      FirebaseAuth.instance.currentUser?.uid ?? '',
+    );
+  }
+
+  bool _waiting(AsyncSnapshot<Object?> s) =>
+      s.connectionState == ConnectionState.waiting;
+
+  @override
   Widget build(BuildContext context) {
     final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
     return StreamBuilder<List<Friend>>(
@@ -320,7 +274,7 @@ class _NotificationFeedScopeState extends State<NotificationFeedScope> {
                             final loading =
                                 os.connectionState == ConnectionState.waiting ||
                                 ss.connectionState == ConnectionState.waiting;
-                            final items = buildNotifications(
+                            final derived = buildNotifications(
                               myUid: myUid,
                               ownBills: os.data ?? const <Bill>[],
                               sharedBills: ss.data ?? const <Bill>[],
@@ -331,7 +285,32 @@ class _NotificationFeedScopeState extends State<NotificationFeedScope> {
                               sharedGroups: sg.data ?? const <Group>[],
                               now: DateTime.now(),
                             );
-                            return widget.builder(context, items, loading);
+                            final ready = ![
+                              fs,
+                              os,
+                              ss,
+                              ts,
+                              og,
+                              sg,
+                            ].any(_waiting);
+                            final store = NotificationStore.instance;
+                            return ListenableBuilder(
+                              listenable: store,
+                              builder: (context, _) {
+                                final shown = store.visible(
+                                  derived,
+                                  ready: ready,
+                                );
+                                WidgetsBinding.instance.addPostFrameCallback(
+                                  (_) => store.sync(derived, ready: ready),
+                                );
+                                return widget.builder(
+                                  context,
+                                  shown,
+                                  loading || !store.loaded,
+                                );
+                              },
+                            );
                           },
                         );
                       },

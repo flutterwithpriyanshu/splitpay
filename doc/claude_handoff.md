@@ -48,7 +48,7 @@ Flutter app `splitpay`: bill split + UPI settle-up. Task = redesign UI screen-by
 - Entry `lib/main.dart`: Firebase/FCM/prefs → `SplashScreen` → `IntroScreen` → auth `StreamBuilder` → `AuthScreen` | profile check | `MainShell` (tabs: Home, Friends, Groups, Wallet; `mainTabNotifier` switches tab).
 - `lib/theme/{app_colors,app_text,theme,theme_notifier}.dart`
 - `lib/widgets/{app_ui,app_logo,intro_illustrations,local_avatar,edit_profile_screen,manage_friends_screen,login_method_badge,day_of_month_picker}.dart`
-- `lib/core/`: `app_currency`, `onboarding_prefs`, `profile_prefs`, `app_toast`, `debt_simplifier`, `upi_*`, `phone_utils`, `money_format`, `app_date_format`, `bill_category`, `notification_prefs`
+- `lib/core/`: `app_notification` (model), `notification_feed` (builds feed from streams, exports model), `notification_store` (local JSON file `notifications_<uid>.json`, path*provider; delete/clearIds/sync), `time_ago`, `app_currency`, `onboarding_prefs`, `profile_prefs`, `app_toast`, `debt_simplifier`, `upi*\*`, `phone_utils`, `money_format`, `app_date_format`, `bill_category`, `notification_prefs`
 - `lib/services/`: bill, friend, group, transaction, upi, fcm, local_notification, local_image
 - `lib/model/`: bill, friend, group, transaction
 - `lib/screens/`: splash, intro, auth, complete_profile, main_shell, home, friends, groups, wallet, add_bill, add_group_bill, edit_bill, bill_detail, friend_details, group_details, shared_group_details, edit_group_settings, group_settle_up, group_splitup, settings, static_content. Subwidgets in `lib/screens/<name>/widgets/`.
@@ -57,12 +57,13 @@ Flutter app `splitpay`: bill split + UPI settle-up. Task = redesign UI screen-by
 
 ## 5. Status
 
-DONE: theme/_, widgets/app_ui, app_logo, intro_illustrations, main_shell (dock), splash, intro, auth, auth/security_check_screen, home (+ `home/widgets/{balance_card,balance_card_parts,home_header,quick_split,activity_tile,notification_bell}`).
+DONE: theme/_, widgets/app_ui, app_logo, intro_illustrations, main_shell (dock), splash, intro, auth, auth/security_check_screen, home (+ `home/widgets/{balance_card,balance_card_parts,home_header,quick_split,activity_tile,notification_bell}`), notifications (+ local file store, swipe delete, clear all).
 TODO (in order, user sends image each): complete_profile, friends, groups, wallet, add_bill, settings, then detail/edit screens, then `screens/_/widgets`.
 Home notes: `home_screen.dart`still ~1000 lines (split pending, user not yet approved).`balance_card_parts.dart`breaks split rule → rename to`ring_painter.dart`, `stat_tile.dart`, `card_button.dart` (user not yet approved).
 
 ## 6. Lessons (bugs seen)
 
+- Notifications: feed derived from live streams, saved by `NotificationStore.sync` (post-frame). Swiped/cleared ids stay in `dismissed` list → never return. Resolved pending rows (paid request) auto-dropped.
 - `Center` inside `bottomNavigationBar` fills full height → body 0 → blank screen. Use `Center(heightFactor: 1)`.
 - `BackdropFilter` blank under Impeller → no blur, use translucent fill + border.
 - State rebuild restarts `flutter_animate` → put timers in own State widget.
@@ -86,6 +87,7 @@ Home notes: `home_screen.dart`still ~1000 lines (split pending, user not yet app
 - Home fonts smaller + balance card restyle → `home/widgets/{balance_card,balance_card_parts,home_header,quick_split,activity_tile}.dart`, `home_screen.dart`
 - Home 2nd pass match image (sizes/weights, promo card, page pad 16) → same files
 - Split-naming rule added
+- Notifications screen: image match, local file store, swipe-right delete, clear all → `core/{app_notification,notification_store,notification_feed,time_ago}.dart`, `screens/notifications_screen.dart`, `screens/notifications/widgets/*` (13 files)
 
 ## 9. Per-screen workflow
 
