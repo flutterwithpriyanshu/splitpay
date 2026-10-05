@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:splitpay/theme/app_colors.dart';
+import 'package:splitpay/widgets/app_ui.dart';
 import 'package:splitpay/screens/home_screen.dart';
 import 'package:splitpay/screens/wallet_screen.dart';
 import 'package:splitpay/screens/friends_screen.dart';
@@ -27,87 +28,24 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: screens),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  index: 0,
-                  icon: Icons.home_rounded,
-                  label: 'home'.tr(),
-                ),
-                _buildNavItem(
-                  index: 1,
-                  icon: Icons.people_alt_rounded,
-                  label: 'friends'.tr(),
-                ),
-                _buildNavItem(
-                  index: 2,
-                  icon: Icons.groups_rounded,
-                  label: 'groups'.tr(),
-                ),
-                _buildNavItem(
-                  index: 3,
-                  icon: Icons.account_balance_wallet_rounded,
-                  label: 'wallet'.tr(),
-                ),
-              ],
-            ),
+      // Floating pill dock. Kept in bottomNavigationBar so each tab's own
+      // FAB still sits above it instead of hiding behind it.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(
+            top: AppSpacing.sm,
+            bottom: AppSpacing.dockBottomGap,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required String label,
-  }) {
-    final bool selected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: selected ? AppColors.primary : AppColors.textSecondary,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
-              ),
-            ),
-          ],
+          child: FloatingDock(
+            currentIndex: _currentIndex,
+            onTap: (i) => setState(() => _currentIndex = i),
+            items: [
+              DockItem(Icons.home_rounded, 'home'.tr()),
+              DockItem(Icons.people_alt_rounded, 'friends'.tr()),
+              DockItem(Icons.groups_rounded, 'groups'.tr()),
+              DockItem(Icons.account_balance_wallet_rounded, 'wallet'.tr()),
+            ],
+          ),
         ),
       ),
     );
