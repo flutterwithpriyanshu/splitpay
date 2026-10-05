@@ -7,6 +7,10 @@ import 'package:splitpay/screens/wallet_screen.dart';
 import 'package:splitpay/screens/friends_screen.dart';
 import 'package:splitpay/screens/groups_screen.dart';
 
+/// Lets any screen switch the bottom dock tab
+/// (0 home, 1 friends, 2 groups, 3 wallet).
+final ValueNotifier<int> mainTabNotifier = ValueNotifier<int>(0);
+
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -16,6 +20,24 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    mainTabNotifier.value = _currentIndex;
+    mainTabNotifier.addListener(_onTabRequested);
+  }
+
+  @override
+  void dispose() {
+    mainTabNotifier.removeListener(_onTabRequested);
+    super.dispose();
+  }
+
+  void _onTabRequested() {
+    final i = mainTabNotifier.value;
+    if (i != _currentIndex && mounted) setState(() => _currentIndex = i);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +60,10 @@ class _MainShellState extends State<MainShell> {
           ),
           child: FloatingDock(
             currentIndex: _currentIndex,
-            onTap: (i) => setState(() => _currentIndex = i),
+            onTap: (i) {
+              setState(() => _currentIndex = i);
+              mainTabNotifier.value = i;
+            },
             items: [
               DockItem(Icons.home_rounded, 'home'.tr()),
               DockItem(Icons.people_alt_rounded, 'friends'.tr()),

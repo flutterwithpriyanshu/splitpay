@@ -1,3 +1,5 @@
+import 'package:splitpay/core/firestore_date.dart';
+
 class Bill {
   final String id;
   final String title;
@@ -31,6 +33,10 @@ class Bill {
   // --- Group tag (optional) ---
   final String? groupId;
 
+  /// When the bill doc was first written (field `createdAt`).
+  /// Null on old docs. Used for notification timestamps.
+  final DateTime? createdAt;
+
   Bill({
     required this.id,
     required this.title,
@@ -52,6 +58,7 @@ class Bill {
     required this.settledUids,
     required this.partialPaymentsByUid,
     this.groupId,
+    this.createdAt,
   });
 
   factory Bill.fromFirestore(String id, Map<String, dynamic> data) {
@@ -92,6 +99,7 @@ class Bill {
         ),
       ),
       groupId: data['groupId'],
+      createdAt: toDateTime(data['createdAt']),
     );
   }
 
