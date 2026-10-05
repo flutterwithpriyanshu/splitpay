@@ -8,6 +8,7 @@ import 'package:splitpay/firebase/firebase_options.dart';
 import 'package:splitpay/theme/theme.dart';
 import 'package:splitpay/theme/theme_notifier.dart';
 
+import 'package:splitpay/screens/splash_screen.dart';
 import 'package:splitpay/screens/intro_screen.dart';
 import 'package:splitpay/screens/auth_screen.dart';
 import 'package:splitpay/screens/main_shell.dart';
@@ -96,7 +97,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
               darkTheme: AppTheme.dark,
               themeMode: mode,
               home: _booting
-                  ? const _StartupPlaceholder()
+                  ? const SplashScreen()
                   : !_seenIntro
                   ? IntroScreen(onDone: _onIntroDone)
                   : StreamBuilder<User?>(
@@ -104,7 +105,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return const _StartupPlaceholder();
+                          return const SplashScreen();
                         }
                         if (snapshot.hasData) {
                           final user = snapshot.data!;
@@ -119,7 +120,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                             builder: (context, cachedSnap) {
                               if (cachedSnap.connectionState ==
                                   ConnectionState.waiting) {
-                                return const _StartupPlaceholder();
+                                return const SplashScreen();
                               }
                               if (cachedSnap.data == true) {
                                 return const MainShell();
@@ -136,7 +137,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
                                 builder: (context, profileSnap) {
                                   if (profileSnap.connectionState ==
                                       ConnectionState.waiting) {
-                                    return const _StartupPlaceholder();
+                                    return const SplashScreen();
                                   }
                                   final profile =
                                       profileSnap.data?.data()
@@ -184,18 +185,6 @@ class _SplitPayAppState extends State<SplitPayApp> {
           },
         );
       },
-    );
-  }
-}
-
-class _StartupPlaceholder extends StatelessWidget {
-  const _StartupPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: const SizedBox.expand(),
     );
   }
 }
