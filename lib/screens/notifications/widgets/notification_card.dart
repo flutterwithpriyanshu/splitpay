@@ -8,7 +8,6 @@ import 'package:splitpay/screens/home/widgets/quick_split.dart'
     show positiveText, negativeText;
 import 'package:splitpay/screens/notifications/widgets/notification_chip.dart';
 import 'package:splitpay/screens/notifications/widgets/notification_meta.dart';
-import 'package:splitpay/screens/notifications/widgets/notification_ref_tag.dart';
 import 'package:splitpay/screens/notifications/widgets/notification_secondary_button.dart';
 import 'package:splitpay/screens/notifications/widgets/notification_text_spans.dart';
 import 'package:splitpay/theme/app_colors.dart';
@@ -135,7 +134,6 @@ class NotificationCard extends StatelessWidget {
           ],
         );
         meta.add(NotificationMeta(Icons.schedule_rounded, timeAgo(n.time)));
-        if (n.ref != null) meta.add(NotificationRefTag(n.ref!));
         break;
 
       case NotifKind.paymentSent:
@@ -162,7 +160,6 @@ class NotificationCard extends StatelessWidget {
           ],
         );
         meta.add(NotificationMeta(Icons.schedule_rounded, timeAgo(n.time)));
-        if (n.ref != null) meta.add(NotificationRefTag(n.ref!));
         break;
 
       case NotifKind.expenseAdded:

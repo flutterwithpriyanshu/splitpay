@@ -24,8 +24,8 @@ import 'package:splitpay/theme/app_colors.dart';
 
 /// Feed built from bills, wallet transactions and groups, kept in a local
 /// file (core/notification_store.dart). Swipe a card right to delete it,
-/// top-bar bin clears all. Opening the screen does not mark anything read.
-/// Leaving it (via the home bell) or tapping the double-check does.
+/// top-bar bin clears all. Opening it from the home bell marks notifications
+/// as read.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -34,7 +34,7 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  late int _seenAt = notificationLastSeenNotifier.value;
+  final int _seenAt = notificationLastSeenNotifier.value;
   NotificationFilter _filter = NotificationFilter.all;
 
   String get _myUid => FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -58,11 +58,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotificationFilter.reminders:
         return n.kind == NotifKind.groupReminder;
     }
-  }
-
-  Future<void> _markAllRead() async {
-    await NotificationPrefs.markAllRead();
-    if (mounted) setState(() => _seenAt = notificationLastSeenNotifier.value);
   }
 
   Future<void> _confirmClear(List<AppNotification> items) async {
@@ -174,9 +169,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               children: [
                 NotificationTopBar(
                   myUid: _myUid,
-                  hasItems: items.isNotEmpty,
-                  onMarkAllRead: _markAllRead,
-                  onClearAll: () => _confirmClear(items),
                 ),
                 Expanded(child: _body(items, loading)),
               ],
@@ -247,6 +239,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       children: [
         NotificationStatusRow(pending: pending),
         const SizedBox(height: 14),
+        NotificationActionsBar(
+          hasItems: all.isNotEmpty,
+          onClearAll: () => _confirmClear(all),
+        ),
         NotificationFilterBar(
           selected: _filter,
           onSelect: (f) => setState(() => _filter = f),
