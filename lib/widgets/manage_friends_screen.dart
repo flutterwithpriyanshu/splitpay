@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/friend_balance.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
@@ -52,26 +53,6 @@ class ManageFriendsScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  double _balanceForFriend(List<Bill> bills, Friend friend) {
-    double balance = 0;
-    for (final bill in bills) {
-      if (bill.groupId != null) continue;
-      if (friend.isLinked) {
-        if (!bill.isParticipant(friend.linkedUid!)) continue;
-        balance += bill.balanceForUid(friend.linkedUid!);
-      } else {
-        if (bill.isSettledFor(friend.id)) continue;
-        if (!bill.friendIds.contains(friend.id)) continue;
-        if (bill.paidBy == 'me') {
-          balance += bill.shareForFriend(friend.id);
-        } else if (bill.paidBy == friend.id) {
-          balance -= bill.myShare;
-        }
-      }
-    }
-    return balance;
   }
 
   @override
@@ -133,7 +114,7 @@ class ManageFriendsScreen extends StatelessWidget {
                         itemCount: friends.length,
                         itemBuilder: (context, index) {
                           final friend = friends[index];
-                          final balance = _balanceForFriend(bills, friend);
+                          final balance = friendBalance(bills, friend);
 
                           String balanceText;
                           Color balanceColor;

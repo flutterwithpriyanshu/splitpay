@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' hide Group;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:splitpay/core/friend_balance.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/friend.dart';
 import 'package:splitpay/services/bill_service.dart';
@@ -343,29 +344,6 @@ class _FriendsTab extends StatelessWidget {
 
   final VoidCallback onAddFriend;
 
-  double _balanceForFriend(List<Bill> bills, Friend friend) {
-    double balance = 0;
-    for (final bill in bills) {
-      // Group bills belong to the group's own balance screens — don't
-      // fold them into this friend's 1:1 balance too, or a linked
-      // friend's group share gets counted here AND on the group page.
-      if (bill.groupId != null) continue;
-      if (friend.isLinked) {
-        if (!bill.isParticipant(friend.linkedUid!)) continue;
-        balance += bill.balanceForUid(friend.linkedUid!);
-      } else {
-        if (bill.isSettledFor(friend.id)) continue;
-        if (!bill.friendIds.contains(friend.id)) continue;
-        if (bill.paidBy == 'me') {
-          balance += bill.shareForFriend(friend.id);
-        } else if (bill.paidBy == friend.id) {
-          balance -= bill.myShare;
-        }
-      }
-    }
-    return balance;
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<Friend>>(
@@ -413,7 +391,7 @@ class _FriendsTab extends StatelessWidget {
               itemCount: friends.length,
               itemBuilder: (context, index) {
                 final friend = friends[index];
-                final balance = _balanceForFriend(bills, friend);
+                final balance = friendBalance(bills, friend);
 
                 String balanceText;
                 Color balanceColor;
