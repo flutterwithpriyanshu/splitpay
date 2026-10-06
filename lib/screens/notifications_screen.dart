@@ -10,6 +10,7 @@ import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/bill_detail_screen.dart';
 import 'package:splitpay/screens/friend_details_screen.dart';
 import 'package:splitpay/screens/group_details_screen.dart';
+import 'package:splitpay/screens/group_settle_up/group_settle_up_screen.dart';
 import 'package:splitpay/screens/notifications/widgets/notification_card.dart';
 import 'package:splitpay/screens/notifications/widgets/notification_empty.dart';
 import 'package:splitpay/screens/notifications/widgets/notification_filter_bar.dart';
@@ -99,6 +100,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  void _openSettleUp(Group g) => Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => GroupSettleUpScreen(group: g)),
+  );
+
   void _openFriend(AppNotification n) => Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => FriendDetailsScreen(friend: n.friend!)),
   );
@@ -131,7 +136,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   /// Group bills settle from the group, 1:1 bills from the friend.
   void _settle(AppNotification n) {
     if (n.group != null) {
-      _openGroup(n.group!);
+      _openSettleUp(n.group!);
     } else if (n.friend != null) {
       _openFriend(n);
     } else {
@@ -147,7 +152,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case NotifKind.groupReminder:
       case NotifKind.simplified:
         final g = n.group;
-        return g == null ? null : () => _openGroup(g);
+        return g == null ? null : () => _openSettleUp(g);
       default:
         return null;
     }

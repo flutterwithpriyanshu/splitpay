@@ -49,8 +49,7 @@ class ReminderService {
     required String message,
   }) async {
     final me = FirebaseAuth.instance.currentUser!.uid;
-    final myName =
-        (await FriendService.getMyProfile())?['fullName'] ?? 'A friend';
+    final myName = (await FriendService.getMyProfile())?['fullName'] ?? 'A friend';
     await _db.collection('reminders').doc(_docId(groupId, debtorUid, me)).set({
       'groupId': groupId,
       'groupName': groupName,

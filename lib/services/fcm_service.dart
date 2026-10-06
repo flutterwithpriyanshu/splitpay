@@ -1,7 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:splitpay/core/app_navigator.dart';
+import 'package:splitpay/screens/group_settle_up/group_settle_up_screen.dart';
+import 'package:splitpay/services/group_service.dart';
 
 /// Cross-device push via Firebase Cloud Messaging. Needs Blaze plan
 /// since send-side runs in a Cloud Function (Admin SDK).
@@ -54,6 +58,31 @@ class FcmService {
         ),
       );
     });
+
+    // Background tap + terminated-app tap.
+    FirebaseMessaging.onMessageOpenedApp.listen(_openFromMessage);
+    final initial = await _messaging.getInitialMessage();
+    if (initial != null) _openFromMessage(initial);
+  }
+
+  /// Push tap → Group Settle Up. Push `data` must carry `groupId`
+  /// (reminder + settle-up pushes from Cloud Function).
+  static Future<void> _openFromMessage(RemoteMessage message) async {
+    final groupId = message.data['groupId'];
+    if (groupId is! String || groupId.isEmpty) return;
+    if (FirebaseAuth.instance.currentUser == null) return;
+    try {
+      final group = await GroupService.streamGroup(groupId).first;
+      // Cold start: navigator may not be mounted yet.
+      for (var i = 0; i < 10 && appNavigatorKey.currentState == null; i++) {
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      appNavigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => GroupSettleUpScreen(group: group)),
+      );
+    } catch (e) {
+      debugPrint('Open settle up from push failed: $e');
+    }
   }
 
   /// Call right after sign-in / sign-up completes, same spot

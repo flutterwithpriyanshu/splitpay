@@ -16,7 +16,7 @@ import 'package:splitpay/services/group_service.dart';
 import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/widgets/day_of_month_picker.dart';
 import 'package:splitpay/screens/group_splitup_screen.dart';
-import 'package:splitpay/screens/group_settle_up_screen.dart';
+import 'package:splitpay/screens/group_settle_up/group_settle_up_screen.dart';
 import 'package:splitpay/screens/edit_group_settings_screen.dart';
 import 'package:splitpay/screens/group_details/widgets/header_pill.dart';
 import 'package:splitpay/screens/group_details/widgets/balance_line_group_details.dart';

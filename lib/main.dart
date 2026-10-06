@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:splitpay/core/app_navigator.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -149,6 +150,7 @@ class _SplitPayAppState extends State<SplitPayApp> {
           valueListenable: themeModeNotifier,
           builder: (context, mode, _) {
             return MaterialApp(
+              navigatorKey: appNavigatorKey,
               title: 'SplitPay',
               debugShowCheckedModeBanner: false,
               localizationsDelegates: context.localizationDelegates,

@@ -5,7 +5,7 @@ import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/model/bill.dart';
 import 'package:splitpay/model/group.dart';
 import 'package:splitpay/screens/add_group_bill_screen.dart';
-import 'package:splitpay/screens/group_settle_up_screen.dart';
+import 'package:splitpay/screens/group_settle_up/group_settle_up_screen.dart';
 import 'package:splitpay/screens/group_splitup_screen.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/balance_line_shared_group.dart';
 import 'package:splitpay/screens/shared_group_details/widgets/header_pill.dart';
