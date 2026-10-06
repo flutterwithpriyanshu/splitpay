@@ -1,9 +1,115 @@
 const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
 const db = admin.firestore();
+
+exports.sendUpiLink = onCall(async (request) => {
+  const senderUid = request.auth?.uid;
+  if (!senderUid) {
+    throw new HttpsError("unauthenticated", "Sign in before sending a UPI link.");
+  }
+
+  const billTitle =
+    typeof request.data?.billTitle === "string"
+      ? request.data.billTitle.trim().slice(0, 120)
+      : "";
+  const rows = request.data?.rows;
+  if (!billTitle.trim() || !Array.isArray(rows) || rows.length > 100) {
+    throw new HttpsError("invalid-argument", "Bill details are invalid.");
+  }
+
+  const profileDoc = await db.collection("users").doc(senderUid).get();
+  const profile = profileDoc.data() || {};
+  const upiId =
+    typeof profile.upiId === "string" ? profile.upiId.trim() : "";
+  if (!upiId) return { noUpiId: true, sent: 0, skipped: 0 };
+
+  const targets = new Map();
+  let skipped = 0;
+  for (const row of rows) {
+    const uid = typeof row?.linkedUid === "string" ? row.linkedUid : "";
+    const amount = Number(row?.amount);
+    if (!uid || uid === senderUid || !Number.isFinite(amount) || amount <= 0) {
+      skipped++;
+      continue;
+    }
+    if (!targets.has(uid)) {
+      targets.set(uid, {
+        amount,
+      });
+    }
+  }
+
+  if (!targets.size) return { noUpiId: false, sent: 0, skipped };
+
+  const targetUids = [...targets.keys()];
+  const linkedUids = new Set();
+  const friendDocs = await db
+    .collection("friends")
+    .where("ownerId", "==", senderUid)
+    .get();
+  for (const friendDoc of friendDocs.docs) {
+    const uid = friendDoc.data().linkedUid;
+    if (targets.has(uid)) linkedUids.add(uid);
+  }
+
+  const authorizedUids = targetUids.filter((uid) => linkedUids.has(uid));
+  skipped += targetUids.length - authorizedUids.length;
+  if (!authorizedUids.length) {
+    return { noUpiId: false, sent: 0, skipped };
+  }
+
+  const receiverName =
+    typeof profile.fullName === "string" && profile.fullName.trim()
+      ? profile.fullName.trim().slice(0, 80)
+      : "SplitPay user";
+  const userDocs = await Promise.all(
+    authorizedUids.map((uid) => db.collection("users").doc(uid).get()),
+  );
+  const messages = [];
+  for (let index = 0; index < authorizedUids.length; index++) {
+    const token = userDocs[index].data()?.fcmToken;
+    if (typeof token !== "string" || !token) {
+      skipped++;
+      continue;
+    }
+    const uid = authorizedUids[index];
+    const target = targets.get(uid);
+    const params = new URLSearchParams({
+      pa: upiId,
+      pn: receiverName,
+      am: target.amount.toFixed(2),
+      cu: "INR",
+      tn: billTitle,
+    });
+    messages.push({
+      token,
+      notification: {
+        title: "UPI payment link",
+        body: `Pay ₹${target.amount.toFixed(2)} for "${billTitle}" to ${receiverName} (${upiId}).`,
+      },
+      data: {
+        type: "upi_payment_link",
+        upiUri: `upi://pay?${params.toString()}`,
+        billTitle,
+        amount: target.amount.toFixed(2),
+        upiId,
+        receiverName,
+      },
+    });
+  }
+
+  let sent = 0;
+  for (let index = 0; index < messages.length; index += 500) {
+    const response = await admin.messaging().sendEach(messages.slice(index, index + 500));
+    sent += response.successCount;
+    skipped += response.failureCount;
+  }
+  return { noUpiId: false, sent, skipped };
+});
 
 exports.onBillWrite = onDocumentWritten("bills/{billId}", async (event) => {
   const before = event.data.before.exists ? event.data.before.data() : null;

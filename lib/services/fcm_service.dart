@@ -4,8 +4,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:splitpay/core/app_navigator.dart';
+import 'package:splitpay/services/local_notification_service.dart';
 import 'package:splitpay/screens/group_settle_up/group_settle_up_screen.dart';
 import 'package:splitpay/services/group_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Cross-device push via Firebase Cloud Messaging. Needs Blaze plan
 /// since send-side runs in a Cloud Function (Admin SDK).
@@ -26,6 +28,7 @@ class FcmService {
   );
 
   static Future<void> init() async {
+    LocalNotificationService.onNotificationTap = _openPaymentLink;
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
     final token = await _messaging.getToken();
@@ -48,10 +51,12 @@ class FcmService {
     FirebaseMessaging.onMessage.listen((message) {
       final notification = message.notification;
       if (notification == null) return;
+      final upiUri = message.data['upiUri'];
       _localPlugin.show(
         id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         title: notification.title ?? '',
         body: notification.body ?? '',
+        payload: upiUri is String ? upiUri : null,
         notificationDetails: const NotificationDetails(
           android: _channel,
           iOS: DarwinNotificationDetails(),
@@ -65,9 +70,30 @@ class FcmService {
     if (initial != null) _openFromMessage(initial);
   }
 
-  /// Push tap → Group Settle Up. Push `data` must carry `groupId`
-  /// (reminder + settle-up pushes from Cloud Function).
+  static Future<void> _openPaymentLink(String value) async {
+    final uri = Uri.tryParse(value);
+    if (uri == null || uri.scheme != 'upi' || uri.host != 'pay') {
+      debugPrint('Ignoring invalid UPI link notification payload.');
+      return;
+    }
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) debugPrint('No app could open the UPI payment link.');
+    } catch (error, stackTrace) {
+      debugPrint('Could not open UPI payment link: $error\n$stackTrace');
+    }
+  }
+
+  /// Push taps open a UPI link or the associated group settle-up screen.
   static Future<void> _openFromMessage(RemoteMessage message) async {
+    final upiUri = message.data['upiUri'];
+    if (upiUri is String && upiUri.isNotEmpty) {
+      await _openPaymentLink(upiUri);
+      return;
+    }
     final groupId = message.data['groupId'];
     if (groupId is! String || groupId.isEmpty) return;
     if (FirebaseAuth.instance.currentUser == null) return;

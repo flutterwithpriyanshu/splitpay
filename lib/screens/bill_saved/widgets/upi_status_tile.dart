@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:splitpay/services/upi_link_service.dart';
+import 'package:splitpay/core/upi_share_state.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/theme/app_text.dart';
 

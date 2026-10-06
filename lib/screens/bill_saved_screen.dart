@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:splitpay/core/app_toast.dart';
 import 'package:splitpay/core/bill_saved_data.dart';
+import 'package:splitpay/core/upi_share_state.dart';
 import 'package:splitpay/screens/bill_saved/widgets/bill_summary_card.dart';
 import 'package:splitpay/screens/bill_saved/widgets/saved_hero.dart';
 import 'package:splitpay/screens/bill_saved/widgets/saved_secondary_button.dart';
@@ -50,20 +51,21 @@ class _BillSavedScreenState extends State<BillSavedScreen> {
         showAppToast(context, 'Add your UPI ID in profile first');
       } else if (res.sent == 0) {
         _state.value = UpiShareState.idle;
-        showAppToast(context, 'No friend on SplitPay to notify');
+        showAppToast(context, 'No linked friends could be notified');
       } else {
         _state.value = UpiShareState.sent;
-        final skip = res.skipped > 0 ? ' (${res.skipped} not on app)' : '';
+        final skip = res.skipped > 0 ? ' (${res.skipped} not notified)' : '';
         showAppToast(
           context,
           'UPI link sent to ${res.sent}$skip',
           isError: false,
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       _state.value = UpiShareState.idle;
-      showAppToast(context, 'Could not send UPI link. Try again.');
+      debugPrint('Failed to send UPI link: $error');
+      showAppToast(context, 'Could not send UPI link: $error');
     }
   }
 

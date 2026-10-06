@@ -5,9 +5,9 @@ import 'package:splitpay/core/bill_category.dart';
 import 'package:splitpay/core/bill_category_label.dart';
 import 'package:splitpay/core/bill_saved_data.dart';
 import 'package:splitpay/core/money_format.dart';
+import 'package:splitpay/core/upi_share_state.dart';
 import 'package:splitpay/screens/bill_saved/widgets/split_member_row.dart';
 import 'package:splitpay/screens/bill_saved/widgets/upi_status_tile.dart';
-import 'package:splitpay/services/upi_link_service.dart';
 import 'package:splitpay/theme/app_colors.dart';
 import 'package:splitpay/theme/app_text.dart';
 import 'package:splitpay/widgets/app_ui.dart';
@@ -133,7 +133,7 @@ class BillSummaryCard extends StatelessWidget {
           const SizedBox(height: 2),
           ValueListenableBuilder<UpiShareState>(
             valueListenable: state,
-            builder: (_, s, __) => UpiStatusTile(
+            builder: (_, s, _) => UpiStatusTile(
               state: s,
               count: data.rows.where((r) => r.linkedUid != null).length,
             ),

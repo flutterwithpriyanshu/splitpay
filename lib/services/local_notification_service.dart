@@ -8,6 +8,7 @@ import 'package:splitpay/core/app_currency.dart';
 class LocalNotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static Future<void> Function(String payload)? onNotificationTap;
 
   static const _channel = AndroidNotificationDetails(
     'bill_activity',
@@ -49,6 +50,12 @@ class LocalNotificationService {
         android: androidInit,
         iOS: iosInit,
       ),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) {
+          onNotificationTap?.call(payload);
+        }
+      },
     );
 
     // Android 13+ needs the runtime notification permission separately.
